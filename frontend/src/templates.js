@@ -4,6 +4,7 @@
 
 import AtmospheraAI from '@templates/atmosphera-ai/index.jsx';
 import HabitsTracker from '@templates/habits-tracker/index.jsx';
+import Pomodoro from '@templates/pomodoro/index.jsx';
 
 export const TEMPLATES = [
   {
@@ -19,6 +20,13 @@ export const TEMPLATES = [
     tagline: 'Дневные галочки и серии',
     icon: '✓',
     component: HabitsTracker,
+  },
+  {
+    id: 'pomodoro',
+    name: 'Pomodoro',
+    tagline: '25/5 таймер с историей',
+    icon: '🍅',
+    component: Pomodoro,
   },
 ];
 
