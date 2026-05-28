@@ -45,3 +45,6 @@ services:
       - path: /manifest.webmanifest
         name: Content-Type
         value: application/manifest+json
+      - path: /apps/*.webmanifest
+        name: Content-Type
+        value: application/manifest+json

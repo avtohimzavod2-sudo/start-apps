@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import InstallButton from './InstallButton.jsx';
 import ShareButton from './ShareButton.jsx';
 import AuthForm from './AuthForm.jsx';
@@ -35,6 +35,21 @@ export default function App({ sa }) {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
+  // Подмена PWA-манифеста и title под открытое мини-приложение.
+  // start_url каждого манифеста ведёт на /?app=<id>, поэтому установленная
+  // иконка запускает сразу нужный шаблон.
+  useEffect(() => {
+    const link = document.querySelector('link[rel="manifest"]');
+    const t = openId ? byId(openId) : null;
+    if (t && link) {
+      link.setAttribute('href', `/apps/${t.id}.webmanifest`);
+      document.title = t.name;
+    } else if (link) {
+      link.setAttribute('href', '/manifest.webmanifest');
+      document.title = 'Start-Apps';
+    }
+  }, [openId]);
+
   function openTemplate(id) {
     if (openId === id) return;
     window.history.pushState({}, '', `?app=${encodeURIComponent(id)}`);
@@ -62,6 +77,8 @@ export default function App({ sa }) {
   const opened = openId ? byId(openId) : null;
   const Template = opened?.component;
   const shareUrl = opened ? `${window.location.origin}/?app=${encodeURIComponent(opened.id)}` : null;
+  // Каждый шаблон видит только свои данные в sa.storage (префикс ключей).
+  const scopedSa = useMemo(() => (opened ? sa.withScope(opened.id) : sa), [sa, opened?.id]);
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#0a0a14', color: '#fff' }}>
@@ -93,7 +110,7 @@ export default function App({ sa }) {
         {!user ? (
           <AuthForm sa={sa} onAuth={setUser} />
         ) : Template ? (
-          <Template sa={sa} />
+          <Template sa={scopedSa} />
         ) : opened ? (
           <p style={{ opacity: 0.6 }}>Шаблон <code>{openId}</code> не найден. <button onClick={closeTemplate} style={{ color: '#6cf', background: 'transparent', border: 0, cursor: 'pointer', textDecoration: 'underline' }}>к приложениям</button></p>
         ) : (

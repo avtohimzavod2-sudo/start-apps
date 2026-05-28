@@ -75,7 +75,22 @@ export function createSa({ api, fetchImpl = fetch } = {}) {
     },
   };
 
-  return { contract: 'v1', storage, auth };
+  function withScope(scope) {
+    if (!scope) return { contract: 'v1', storage, auth, scope: null };
+    const prefix = `${scope}:`;
+    const scoped = {
+      async get(key) { return storage.get(prefix + key); },
+      async set(key, value) { return storage.set(prefix + key, value); },
+      async del(key) { return storage.del(prefix + key); },
+      async keys() {
+        const all = await storage.keys();
+        return all.filter((k) => k.startsWith(prefix)).map((k) => k.slice(prefix.length));
+      },
+    };
+    return { contract: 'v1', storage: scoped, auth, scope };
+  }
+
+  return { contract: 'v1', storage, auth, withScope, scope: null };
 }
 
 export default createSa;

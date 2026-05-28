@@ -26,3 +26,6 @@ backend/data/
 # Junction'ы Windows для dev — на CI копируются скриптом frontend/scripts/copy-sources.js
 frontend/_sdk/
 frontend/_templates/
+
+# Генерируется gen-manifests.js при билде
+frontend/public/apps/
