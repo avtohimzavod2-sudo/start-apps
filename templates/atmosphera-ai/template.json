@@ -1,0 +1,12 @@
+{
+  "id": "atmosphera-ai",
+  "name": "Atmosphera AI",
+  "version": "0.1.0",
+  "contract": "v1",
+  "description": "Шаблон-помощник по атмосфере места: пользователь оставляет короткие наблюдения, шаблон копит их через sa.storage и собирает «карту настроения».",
+  "uses": {
+    "storage": ["notes"],
+    "auth": ["optional"]
+  },
+  "entry": "index.jsx"
+}

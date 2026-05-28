@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://start-apps.local/contracts/v1.schema.json",
+  "title": "Start-Apps SDK contract v1",
+  "description": "Контракт объекта `sa`, который платформа инжектит в шаблон.",
+  "type": "object",
+  "required": ["contract", "storage", "auth"],
+  "properties": {
+    "contract": { "const": "v1" },
+    "storage": {
+      "type": "object",
+      "description": "Розетка для key/value-хранилища пользователя.",
+      "required": ["get", "set", "del", "keys"],
+      "properties": {
+        "get":  { "$ref": "#/$defs/asyncFn", "description": "(key) => value | null" },
+        "set":  { "$ref": "#/$defs/asyncFn", "description": "(key, value) => void" },
+        "del":  { "$ref": "#/$defs/asyncFn", "description": "(key) => void" },
+        "keys": { "$ref": "#/$defs/asyncFn", "description": "() => string[]" }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "description": "Розетка для аутентификации пользователя.",
+      "required": ["register", "login", "logout", "me", "isAuthorized"],
+      "properties": {
+        "register":     { "$ref": "#/$defs/asyncFn", "description": "(login, password) => { token }" },
+        "login":        { "$ref": "#/$defs/asyncFn", "description": "(login, password) => { token }" },
+        "logout":       { "$ref": "#/$defs/syncFn",  "description": "() => void" },
+        "me":           { "$ref": "#/$defs/asyncFn", "description": "() => profile" },
+        "isAuthorized": { "$ref": "#/$defs/syncFn",  "description": "() => boolean" }
+      }
+    }
+  },
+  "$defs": {
+    "asyncFn": { "type": "object", "description": "Promise-возвращающая функция." },
+    "syncFn":  { "type": "object", "description": "Синхронная функция." }
+  }
+}

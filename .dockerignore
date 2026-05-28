@@ -1,0 +1,11 @@
+# Не таскать в Docker build context
+**/node_modules
+**/.venv
+**/__pycache__
+**/.vite
+**/dist
+**/_sdk
+**/_templates
+backend/data
+.env.local
+.git

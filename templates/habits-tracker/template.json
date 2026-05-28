@@ -1,0 +1,12 @@
+{
+  "id": "habits-tracker",
+  "name": "Habits Tracker",
+  "version": "0.1.0",
+  "contract": "v1",
+  "description": "Простой трекер привычек: добавляешь привычку, отмечаешь дни. Хранится через sa.storage под ключом `habits`.",
+  "uses": {
+    "storage": ["habits"],
+    "auth": ["required"]
+  },
+  "entry": "index.jsx"
+}

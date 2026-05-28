@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sa-postgres
+    environment:
+      - POSTGRES_USER=sa
+      - POSTGRES_PASSWORD=sa
+      - POSTGRES_DB=startapps
+    ports:
+      - "5432:5432"
+    volumes:
+      - sa-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sa -d startapps"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: sa-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - sa-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: sa-backend
+    env_file: .env
+    environment:
+      - SA_AUTH_SECRET=${SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - SA_ENV=${SA_ENV}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: sa-frontend
+    env_file: .env
+    environment:
+      - VITE_SA_API=${VITE_SA_API}
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  sa-pg:
+  sa-redis:

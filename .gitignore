@@ -1,0 +1,28 @@
+# секреты
+.env
+.env.local
+.env.*.local
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# node
+node_modules/
+dist/
+.vite/
+
+# IDE
+.idea/
+.vscode/
+.claude/
+.DS_Store
+
+# Локальные данные (БД, файлы)
+backend/data/
+
+# Junction'ы Windows для dev — на CI копируются скриптом frontend/scripts/copy-sources.js
+frontend/_sdk/
+frontend/_templates/
