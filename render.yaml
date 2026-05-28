@@ -32,14 +32,8 @@ services:
     name: sa-frontend
     runtime: static
     rootDir: .
-    buildCommand: cd frontend && npm install && VITE_SA_API="https://${SA_BACKEND_HOST}" npm run build
+    buildCommand: cd frontend && npm install && VITE_SA_API="https://sa-backend-yj5r.onrender.com" npm run build
     staticPublishPath: ./frontend/dist
-    envVars:
-      - key: SA_BACKEND_HOST
-        fromService:
-          name: sa-backend
-          type: web
-          property: host
     routes:
       - type: rewrite
         source: /*
