@@ -1,39 +1,62 @@
-/* Глобальная база — светлая премиум-палитра (Linear/Cal.com-style).
-   CSS-переменная --accent перебивается из App.jsx под цвет бизнеса. */
+/* Дизайн-токены Start-Apps — WB-плотность, акцент = цвет бизнеса.
+   --accent перебивается из App.jsx под каждый tenant; всё остальное вычисляется от него. */
 
 :root {
-  --bg:           #fafaf7;
+  /* Поверхности */
+  --bg:           #f6f6f9;
   --surface:      #ffffff;
-  --surface-alt:  #f5f5f1;
-  --text:         #0f0f10;
-  --text-muted:   #6b6f76;
-  --text-subtle:  #9ca3af;
-  --border:       #ebebe7;
-  --border-strong:#d4d4d0;
+  --surface-alt:  #f1f1f4;
+  --line:         #ececef;
+  --line-strong:  #d4d4d8;
+
+  /* Текст */
+  --text:         #17181c;
+  --text-muted:   #5e6168;
+  --text-faint:   #9aa0a6;
+
+  /* Акцент (per-tenant, переопределяется JS) */
   --accent:       #2563eb;
-  --accent-soft:  rgba(37, 99, 235, 0.08);
   --accent-text:  #ffffff;
-  --danger:       #dc2626;
+  --accent-press: color-mix(in srgb, var(--accent) 88%, black);
+  --accent-soft:  color-mix(in srgb, var(--accent) 12%, white);
+  --accent-ring:  color-mix(in srgb, var(--accent) 22%, transparent);
+
+  /* Семантика */
+  --sale:         #ec4276;
+  --sale-soft:    #fde7ee;
+  --star:         #ffa726;
   --success:      #16a34a;
+  --success-soft: rgba(22,163,74,0.10);
+  --danger:       #dc2626;
+  --danger-soft:  rgba(220,38,38,0.08);
   --warning:      #b45309;
-  --shadow-sm:    0 1px 2px rgba(0,0,0,0.04);
-  --shadow:       0 4px 14px rgba(0,0,0,0.05);
-  --shadow-lg:    0 16px 40px rgba(0,0,0,0.08);
-  --radius-sm:    8px;
-  --radius:       12px;
+
+  /* Тени */
+  --shadow-sm:    0 1px 2px rgba(15,18,28,0.04);
+  --shadow:       0 4px 14px rgba(15,18,28,0.06);
+  --shadow-lg:    0 16px 40px rgba(15,18,28,0.08);
+
+  /* Радиусы */
+  --radius-card:  12px;
+  --radius-btn:   10px;
+  --radius-pill:  20px;
   --radius-lg:    18px;
+
+  /* Шрифт */
   --font-sans:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+
+  /* Высота нижней навигации — учитываем при padding-bottom основной области */
+  --bottom-nav-h: 56px;
 }
 
 * { box-sizing: border-box; }
-
 html, body, #root { height: 100%; }
 
 body {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.45;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
@@ -41,33 +64,30 @@ body {
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
 
-h1, h2, h3, h4 {
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  margin: 0;
-  color: var(--text);
-}
-h1 { font-size: 32px; line-height: 1.2; }
-h2 { font-size: 22px; line-height: 1.3; }
-h3 { font-size: 16px; line-height: 1.4; }
+/* Типографика — только веса 400/500, sentence case */
+h1, h2, h3, h4 { font-weight: 500; letter-spacing: -0.01em; margin: 0; color: var(--text); }
+h1 { font-size: 22px; line-height: 1.25; }
+h2 { font-size: 17px; line-height: 1.3; }
+h3 { font-size: 15px; line-height: 1.35; }
+h4 { font-size: 14px; line-height: 1.35; }
 
-p { margin: 0; color: var(--text); }
-small { color: var(--text-muted); }
-code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.9em; background: var(--surface-alt); padding: 2px 6px; border-radius: 4px; }
+p { margin: 0; }
+small { color: var(--text-muted); font-size: 12px; }
+code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.9em;
+       background: var(--surface-alt); padding: 2px 6px; border-radius: 4px; }
 
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-button, input, select, textarea {
-  font: inherit;
-  color: inherit;
-}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: transparent; padding: 0; }
+button:disabled { cursor: not-allowed; opacity: 0.5; }
 
 input, textarea, select {
   width: 100%;
   padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--line);
   background: var(--surface);
   color: var(--text);
   outline: none;
@@ -75,26 +95,23 @@ input, textarea, select {
 }
 input:focus, textarea:focus, select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
-input::placeholder, textarea::placeholder { color: var(--text-subtle); }
+input::placeholder, textarea::placeholder { color: var(--text-faint); }
 
-button { cursor: pointer; border: 0; background: transparent; }
-button:disabled { cursor: not-allowed; opacity: 0.5; }
-
-/* Глобальный контейнер с тонкой прокруткой */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
-/* Утилитарные классы */
-.sa-container { max-width: 720px; margin: 0 auto; padding: 24px 16px 80px; }
-.sa-stack    { display: flex; flex-direction: column; gap: 16px; }
-.sa-row      { display: flex; align-items: center; gap: 12px; }
-.sa-card     { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow-sm); }
-.sa-muted    { color: var(--text-muted); }
-.sa-subtle   { color: var(--text-subtle); }
+/* Утилитарные */
+.sa-container  { max-width: 720px; margin: 0 auto; padding: 16px 16px 80px; }
+.sa-stack      { display: flex; flex-direction: column; gap: 12px; }
+.sa-row        { display: flex; align-items: center; gap: 12px; }
+.sa-muted      { color: var(--text-muted); }
+.sa-faint      { color: var(--text-faint); }
 
-/* Анимация появления */
+/* Анимации */
 @keyframes sa-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .sa-appear { animation: sa-fade-in 200ms ease both; }
+
+@keyframes sa-pulse { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }

@@ -6,6 +6,8 @@ import MyTenants from './MyTenants.jsx';
 import IosInstallHint from './IosInstallHint.jsx';
 import AppRuntime from './AppRuntime.jsx';
 import AppBuilder from './AppBuilder.jsx';
+import { Button } from './design/index.js';
+import { IconEdit, IconShare } from './design/Icons.jsx';
 
 function parseUrl() {
   const m = window.location.pathname.match(/^\/app\/([a-z0-9-]+)(?:\/(edit))?\/?$/i);
@@ -13,8 +15,7 @@ function parseUrl() {
   return { slug: m[1].toLowerCase(), mode: m[2] === 'edit' ? 'edit' : 'view' };
 }
 
-// hex → rgba for accent-soft mixing
-function softColor(hex, alpha = 0.08) {
+function softColor(hex, alpha = 0.12) {
   const m = /^#?([\da-f]{6})$/i.exec(hex);
   if (!m) return `rgba(37, 99, 235, ${alpha})`;
   const n = parseInt(m[1], 16);
@@ -51,7 +52,6 @@ export default function App({ sa }) {
       .catch((e) => setTenantError(String(e).includes('404') ? 'Бизнес не найден' : 'Ошибка загрузки'));
   }, [route.slug, user, sa]);
 
-  // Брендинг: PWA-манифест, title, theme-color и --accent под цвет бизнеса.
   useEffect(() => {
     const link = document.querySelector('link[rel="manifest"]');
     const themeMeta = document.querySelector('meta[name="theme-color"]');
@@ -63,31 +63,21 @@ export default function App({ sa }) {
       if (themeMeta) themeMeta.setAttribute('content', color);
       root.style.setProperty('--accent', color);
       root.style.setProperty('--accent-soft', softColor(color, 0.10));
+      root.style.setProperty('--accent-ring', softColor(color, 0.22));
     } else {
       if (link) link.setAttribute('href', '/manifest.webmanifest');
       document.title = 'Start-Apps';
-      if (themeMeta) themeMeta.setAttribute('content', '#fafaf7');
+      if (themeMeta) themeMeta.setAttribute('content', '#f6f6f9');
       root.style.setProperty('--accent', '#2563eb');
       root.style.setProperty('--accent-soft', softColor('#2563eb', 0.10));
+      root.style.setProperty('--accent-ring', softColor('#2563eb', 0.22));
     }
   }, [route.slug, tenant, sa]);
 
-  function openTenant(slug) {
-    window.history.pushState({}, '', `/app/${slug}`);
-    setRoute({ slug, mode: 'view' });
-  }
-  function editTenant(slug) {
-    window.history.pushState({}, '', `/app/${slug}/edit`);
-    setRoute({ slug, mode: 'edit' });
-  }
-  function goHome() {
-    window.history.pushState({}, '', '/');
-    setRoute({ slug: null, mode: 'home' });
-  }
-  function logout() {
-    sa.auth.logout();
-    setUser(null);
-  }
+  function openTenant(slug) { window.history.pushState({}, '', `/app/${slug}`); setRoute({ slug, mode: 'view' }); }
+  function editTenant(slug) { window.history.pushState({}, '', `/app/${slug}/edit`); setRoute({ slug, mode: 'edit' }); }
+  function goHome()         { window.history.pushState({}, '', '/');                setRoute({ slug: null, mode: 'home' }); }
+  function logout()         { sa.auth.logout(); setUser(null); }
 
   const scopedSa = useMemo(() => (route.slug ? sa.withTenant(route.slug) : sa), [sa, route.slug]);
   const shareUrl = route.slug ? `${window.location.origin}/app/${route.slug}` : null;
@@ -95,48 +85,51 @@ export default function App({ sa }) {
 
   if (!ready) return <div className="sa-container"><p className="sa-muted">Загрузка…</p></div>;
 
+  const tenantViewMode = route.slug && tenant && route.mode === 'view';
+
   return (
     <div>
       <IosInstallHint />
-      <header style={hdr}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <button onClick={goHome} style={brandBtn}>
-            <span style={brandDot}>S</span>
-            <span style={{ fontWeight: 600 }}>Start-Apps</span>
-          </button>
-          {tenant && (
-            <>
-              <span style={crumb}>/</span>
-              <span style={{ fontWeight: 500, color: 'var(--text)' }}>{tenant.name}</span>
-            </>
-          )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {tenant && isOwner && route.mode === 'view' && (
-            <button onClick={() => editTenant(route.slug)} style={editBtn}>✏ редактировать</button>
-          )}
-          {tenant && isOwner && route.mode === 'edit' && (
-            <button onClick={() => openTenant(route.slug)} style={editBtn}>👁 просмотр</button>
-          )}
-          {tenant && user && route.mode === 'view' && <ShareButton title={tenant.name} url={shareUrl} />}
-          {user ? (
-            <>
-              <span className="sa-muted" style={{ fontSize: 14 }}>{user.login}</span>
-              <button onClick={logout} style={logoutBtn} title="выйти">↪</button>
-            </>
-          ) : (
-            <span className="sa-subtle" style={{ fontSize: 14 }}>гость</span>
-          )}
-          <InstallButton />
-        </div>
-      </header>
 
-      <main className="sa-container sa-appear">
+      {/* Глобальная шапка скрывается на странице тенанта в view-mode —
+          её роль играет AppBar в AppRuntime. */}
+      {!tenantViewMode && (
+        <header style={hdr}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <button onClick={goHome} style={brandBtn}>
+              <span style={brandDot}>S</span>
+              <span style={{ fontWeight: 500 }}>Start-Apps</span>
+            </button>
+            {tenant && (
+              <>
+                <span style={crumb}>/</span>
+                <span style={{ fontWeight: 500 }}>{tenant.name}</span>
+              </>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {tenant && isOwner && route.mode === 'edit' && (
+              <Button variant="secondary" size="sm" onClick={() => openTenant(route.slug)}>👁 просмотр</Button>
+            )}
+            {user ? (
+              <>
+                <span className="sa-muted" style={{ fontSize: 13 }}>{user.login}</span>
+                <button onClick={logout} style={logoutBtn} title="выйти">↪</button>
+              </>
+            ) : (
+              <span className="sa-faint" style={{ fontSize: 13 }}>гость</span>
+            )}
+            <InstallButton />
+          </div>
+        </header>
+      )}
+
+      <main className={tenantViewMode ? 'sa-appear' : 'sa-container sa-appear'}>
         {!user ? (
           <>
             {route.slug && (
               <div style={hint}>
-                Это страница бизнеса <code>/{route.slug}</code>. Зарегистрируйся или войди — твои данные привяжутся к этому бизнесу.
+                Это страница бизнеса <code>/{route.slug}</code>. Зарегистрируйся или войди.
               </div>
             )}
             <AuthForm sa={sa} onAuth={setUser} />
@@ -149,7 +142,15 @@ export default function App({ sa }) {
           ) : tenant ? (
             route.mode === 'edit' && isOwner
               ? <AppBuilder sa={scopedSa} tenant={tenant} onClose={() => openTenant(route.slug)} />
-              : <AppRuntime sa={scopedSa} tenant={tenant} isOwner={isOwner} />
+              : (
+                <>
+                  <AppRuntime sa={scopedSa} tenant={tenant} isOwner={isOwner} />
+                  {/* Floating-actions в view-mode для владельца */}
+                  {isOwner && (
+                    <FabBar onEdit={() => editTenant(route.slug)} shareUrl={shareUrl} tenantName={tenant.name} />
+                  )}
+                </>
+              )
           ) : (
             <p className="sa-muted">загрузка бизнеса…</p>
           )
@@ -161,12 +162,32 @@ export default function App({ sa }) {
   );
 }
 
+function FabBar({ onEdit, shareUrl, tenantName }) {
+  return (
+    <div style={{
+      position: 'fixed', top: 12, right: 12, zIndex: 60,
+      display: 'flex', gap: 6,
+    }}>
+      <ShareButton title={tenantName} url={shareUrl} />
+      <button onClick={onEdit} style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '6px 12px', borderRadius: 999,
+        background: 'rgba(255,255,255,0.95)', color: 'var(--text)',
+        border: '1px solid var(--line)', fontSize: 13, fontWeight: 500,
+        boxShadow: 'var(--shadow)', cursor: 'pointer',
+      }}>
+        <IconEdit size={14} /> ред.
+      </button>
+    </div>
+  );
+}
+
 const hdr = {
   position: 'sticky', top: 0, zIndex: 50,
-  padding: '12px 20px',
-  background: 'rgba(250, 250, 247, 0.85)',
+  padding: '10px 16px',
+  background: 'rgba(246,246,249,0.88)',
   backdropFilter: 'saturate(180%) blur(10px)',
-  borderBottom: '1px solid var(--border)',
+  borderBottom: '1px solid var(--line)',
   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
   gap: 12, flexWrap: 'wrap',
 };
@@ -174,24 +195,19 @@ const brandBtn = {
   display: 'inline-flex', alignItems: 'center', gap: 8,
   padding: '4px 6px', borderRadius: 8, cursor: 'pointer',
   color: 'var(--text)', background: 'transparent',
-  fontSize: 15,
+  fontSize: 14,
 };
 const brandDot = {
   width: 22, height: 22, borderRadius: 6,
   background: 'var(--text)', color: 'var(--bg)',
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-  fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-sans)',
+  fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-sans)',
 };
-const crumb = { color: 'var(--text-subtle)' };
-const editBtn = {
-  padding: '6px 12px', borderRadius: 8,
-  background: 'transparent', color: 'var(--accent)',
-  border: '1px solid var(--border-strong)', fontSize: 13, fontWeight: 500,
-};
+const crumb = { color: 'var(--text-faint)' };
 const logoutBtn = {
-  width: 32, height: 32, borderRadius: 8, fontSize: 16,
+  width: 30, height: 30, borderRadius: 8, fontSize: 15,
   color: 'var(--text-muted)', background: 'transparent',
-  border: '1px solid var(--border)',
+  border: '1px solid var(--line)',
 };
 const linkBtn = {
   color: 'var(--accent)', background: 'transparent', border: 0,
@@ -200,5 +216,5 @@ const linkBtn = {
 const hint = {
   background: 'var(--accent-soft)', padding: '12px 16px',
   borderRadius: 10, marginBottom: 16, fontSize: 14,
-  border: '1px solid var(--border)',
+  border: '1px solid color-mix(in srgb, var(--accent) 18%, transparent)',
 };

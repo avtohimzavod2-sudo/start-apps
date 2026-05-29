@@ -1,28 +1,66 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
+import { ServiceCard, SectionHeader, CategoryChips } from '../design/index.js';
 import { ui } from './ui.js';
 
+// Список услуг как WB-витрина: чипы-категории (по длительности), сетка карточек.
+// Категории генерим из самих услуг — без полей в config (не меняем контракт).
 export function Services({ settings, data }) {
   const services = data?.services || [];
+  const categories = useMemo(() => {
+    const tags = [{ id: 'all', label: 'Все' }];
+    if (services.some((s) => s.duration && s.duration <= 30)) tags.push({ id: 'fast', label: 'До 30 мин' });
+    if (services.some((s) => s.duration && s.duration > 30)) tags.push({ id: 'long', label: 'Больше 30 мин' });
+    return tags;
+  }, [services]);
+  const [cat, setCat] = useState('all');
+
+  const filtered = services.filter((s) => {
+    if (cat === 'fast') return s.duration && s.duration <= 30;
+    if (cat === 'long') return s.duration && s.duration > 30;
+    return true;
+  });
+
   return (
-    <section style={ui.section}>
-      <h2 style={ui.h2}>{settings?.title || 'Наши услуги'}</h2>
+    <div style={ui.section}>
+      <SectionHeader
+        title={settings?.title || 'Услуги'}
+        subtitle={services.length ? `${services.length} ${plural(services.length, ['услуга', 'услуги', 'услуг'])}` : null}
+      />
       {services.length === 0 ? (
-        <p style={ui.muted}>Услуги пока не настроены.</p>
+        <p className="sa-muted">Услуги пока не настроены.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {services.map((s, i) => (
-            <div key={i} style={serviceRow}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 500 }}>{s.name}</div>
-                {s.duration && <small className="sa-muted">{s.duration} мин</small>}
-              </div>
-              <div style={{ fontWeight: 600, fontSize: 16 }}>{s.price} <small className="sa-muted">сом</small></div>
+        <>
+          {categories.length > 1 && (
+            <div style={{ marginBottom: 12 }}>
+              <CategoryChips items={categories} active={cat} onSelect={setCat} />
             </div>
-          ))}
-        </div>
+          )}
+          <div style={grid}>
+            {filtered.map((s, i) => (
+              <ServiceCard key={i} service={s} cta="Записаться"
+                onPick={() => scrollToBooking()} />
+            ))}
+          </div>
+        </>
       )}
-    </section>
+    </div>
   );
+}
+
+function scrollToBooking() {
+  // Если в приложении есть блок booking — скроллим к нему.
+  const el = document.querySelector('[id^="block-"][id*="booking"]');
+  if (el) {
+    const top = el.getBoundingClientRect().top + window.scrollY - 80;
+    window.scrollTo({ top, behavior: 'smooth' });
+  }
+}
+
+function plural(n, [one, few, many]) {
+  const n10 = n % 10, n100 = n % 100;
+  if (n10 === 1 && n100 !== 11) return one;
+  if ([2, 3, 4].includes(n10) && ![12, 13, 14].includes(n100)) return few;
+  return many;
 }
 
 export function ServicesEditor({ settings, onChange }) {
@@ -31,13 +69,13 @@ export function ServicesEditor({ settings, onChange }) {
       <label style={ui.lbl}>Заголовок раздела</label>
       <input value={settings?.title || ''}
              onChange={(e) => onChange({ ...settings, title: e.target.value })}
-             placeholder="Наши услуги" />
+             placeholder="Услуги" />
     </div>
   );
 }
 
-const serviceRow = {
-  display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
-  background: 'var(--surface)', border: '1px solid var(--border)',
-  borderRadius: 12, boxShadow: 'var(--shadow-sm)',
+const grid = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  gap: 12,
 };

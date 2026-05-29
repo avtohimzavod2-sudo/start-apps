@@ -68,5 +68,5 @@ const primary = {
 const ghost = {
   padding: '8px 14px', borderRadius: 999, fontSize: 13, fontWeight: 500,
   background: 'var(--surface)', color: 'var(--accent)',
-  border: '1px solid var(--border-strong)',
+  border: '1px solid var(--line-strong)',
 };

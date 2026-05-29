@@ -27,5 +27,5 @@ export default function ShareButton({ title, url }) {
 const btn = {
   padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500,
   background: 'transparent', color: 'var(--accent)',
-  border: '1px solid var(--border-strong)',
+  border: '1px solid var(--line-strong)',
 };

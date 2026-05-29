@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { PRESETS, presetById } from './presets.js';
+import { Button, SectionHeader, Badge } from './design/index.js';
+import { IconPlus, IconEdit, IconX, IconChevronRight, IconArrowRight } from './design/Icons.jsx';
 
 const PALETTE = ['#2563eb', '#dc2626', '#d97706', '#16a34a', '#7c3aed', '#db2777', '#0891b2', '#65a30d'];
 const EMOJI_PRESET = ['✂️', '☕', '🍔', '💇', '💅', '🛒', '📚', '🎵', '🏋️', '🌸', '🍕', '🚗'];
@@ -17,34 +19,32 @@ export default function MyTenants({ sa, onOpen, onEdit, user }) {
 
   return (
     <section className="sa-stack">
-      <header style={{ marginBottom: 4 }}>
-        <h1>Мои бизнесы</h1>
-        <p className="sa-muted" style={{ marginTop: 4 }}>
-          Каждый бизнес — отдельное PWA-приложение с иконкой на телефоне клиентов.
-        </p>
-      </header>
+      <SectionHeader
+        title="Мои бизнесы"
+        subtitle={`Привет, ${user?.login}. Каждый бизнес — приложение с иконкой на телефоне клиентов.`}
+      />
 
       {!open ? (
         <button onClick={() => setOpen(true)} style={addCard}>
-          <span style={addCardPlus}>+</span>
+          <span style={addCardIcon}><IconPlus size={18} /></span>
           <span>Создать новый бизнес</span>
+          <IconArrowRight size={18} color="var(--accent)" />
         </button>
       ) : (
-        <CreateForm sa={sa} onCancel={() => setOpen(false)} onCreated={(t) => { setOpen(false); reload(); onEdit(t.slug); }} />
+        <CreateForm sa={sa} onCancel={() => setOpen(false)}
+          onCreated={(t) => { setOpen(false); reload(); onEdit(t.slug); }} />
       )}
-
-      <div style={{ height: 8 }} />
 
       {loading ? (
         <p className="sa-muted">Загрузка…</p>
       ) : list.length === 0 ? (
-        <div className="sa-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
+        <div style={emptyCard}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>🏪</div>
-          <p style={{ marginBottom: 4 }}>Пока ни одного бизнеса</p>
-          <p className="sa-muted" style={{ fontSize: 14 }}>Создай первый — займёт минуту.</p>
+          <h3 style={{ marginBottom: 4 }}>Пока ни одного бизнеса</h3>
+          <small className="sa-muted">Создай первый — займёт минуту.</small>
         </div>
       ) : (
-        <div className="sa-stack">
+        <div style={grid}>
           {list.map((t) => (
             <TenantCard key={t.id} t={t} onOpen={onOpen} onEdit={onEdit} onChanged={reload} sa={sa} user={user} />
           ))}
@@ -78,33 +78,35 @@ function CreateForm({ sa, onCancel, onCreated }) {
   }
 
   return (
-    <div className="sa-card sa-appear">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h3 style={{ margin: 0 }}>Новый бизнес</h3>
-        <button onClick={onCancel} style={ghostBtn}>отменить</button>
+    <div style={formCard} className="sa-appear">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <h2 style={{ margin: 0 }}>Новый бизнес</h2>
+        <button onClick={onCancel} style={closeBtn}><IconX size={18} /></button>
       </div>
 
       {/* Превью иконки */}
-      <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 16 }}>
+      <div style={previewRow}>
         <div style={{
-          width: 72, height: 72, borderRadius: 16, background: color,
+          width: 72, height: 72, borderRadius: 16,
+          background: `linear-gradient(135deg, ${color}, ${color}cc)`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 36, flexShrink: 0, boxShadow: 'var(--shadow)',
+          fontSize: 36, flexShrink: 0, boxShadow: `0 6px 18px ${color}55`,
         }}>{iconEmoji}</div>
-        <div className="sa-muted" style={{ fontSize: 13 }}>
-          Такая иконка появится на телефоне клиента при установке.
-        </div>
+        <small className="sa-muted" style={{ flex: 1 }}>
+          Так появится иконка на телефоне клиента при установке.
+        </small>
       </div>
 
       <label style={lbl}>Тип приложения</label>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
         {PRESETS.map((p) => (
           <button key={p.id} onClick={() => setTemplateId(p.id)} style={presetBtn(templateId === p.id)}>
             <span style={{ fontSize: 24 }}>{p.icon}</span>
-            <span style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-              <b>{p.name}</b>
+            <span style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', flex: 1, minWidth: 0 }}>
+              <b style={{ fontWeight: 500 }}>{p.name}</b>
               <small className="sa-muted">{p.tagline}</small>
             </span>
+            {templateId === p.id && <Badge variant="info">выбрано</Badge>}
           </button>
         ))}
       </div>
@@ -117,7 +119,7 @@ function CreateForm({ sa, onCancel, onCreated }) {
              onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
              placeholder="barber-almaz" />
       {slug && (
-        <small className="sa-subtle" style={{ display: 'block', marginTop: 4 }}>
+        <small className="sa-faint" style={{ display: 'block', marginTop: 4 }}>
           {window.location.origin}/app/<b style={{ color: 'var(--accent)' }}>{slug}</b>
         </small>
       )}
@@ -128,7 +130,7 @@ function CreateForm({ sa, onCancel, onCreated }) {
           <button key={c} onClick={() => setColor(c)} aria-label={`Цвет ${c}`}
                   style={{
                     width: 36, height: 36, borderRadius: 10, background: c,
-                    border: color === c ? '3px solid var(--text)' : '1px solid var(--border)',
+                    border: color === c ? '3px solid var(--text)' : '1px solid var(--line)',
                     transition: 'transform 100ms',
                     transform: color === c ? 'scale(1.05)' : 'scale(1)',
                   }} />
@@ -141,16 +143,18 @@ function CreateForm({ sa, onCancel, onCreated }) {
           <button key={e} onClick={() => setIconEmoji(e)} style={{
             width: 40, height: 40, borderRadius: 10, fontSize: 22,
             background: iconEmoji === e ? 'var(--accent-soft)' : 'var(--surface)',
-            border: `1px solid ${iconEmoji === e ? 'var(--accent)' : 'var(--border)'}`,
+            border: `1px solid ${iconEmoji === e ? 'var(--accent)' : 'var(--line)'}`,
           }}>{e}</button>
         ))}
       </div>
 
       {error && <div style={errBox}>⚠ {error}</div>}
 
-      <button onClick={create} disabled={creating} style={{ ...btnPrimary, width: '100%', marginTop: 20 }}>
-        {creating ? 'Создаю…' : 'Создать и настроить'}
-      </button>
+      <div style={{ marginTop: 18 }}>
+        <Button variant="primary" size="lg" block disabled={creating} onClick={create}>
+          {creating ? 'Создаю…' : 'Создать и настроить'}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -166,118 +170,128 @@ function TenantCard({ t, onOpen, onEdit, onChanged, sa, user }) {
     e.stopPropagation();
     if (!window.confirm(`Удалить «${t.name}»? Данные пропадут.`)) return;
     setBusy(true);
-    try { await sa.tenants.delete(t.slug); await onChanged(); }
-    finally { setBusy(false); }
+    try { await sa.tenants.delete(t.slug); await onChanged(); } finally { setBusy(false); }
   }
-
   function handleEdit(e) { e.stopPropagation(); onEdit(t.slug); }
 
   return (
     <div onClick={() => !busy && onOpen(t.slug)}
          onMouseEnter={() => setHover(true)}
          onMouseLeave={() => setHover(false)}
-         style={{ ...cardWrap, transform: hover ? 'translateY(-2px)' : 'none',
-                  boxShadow: hover ? 'var(--shadow-lg)' : 'var(--shadow-sm)',
-                  borderColor: hover ? color : 'var(--border)' }}>
-      <div style={{ ...cardStripe, background: color }} />
-      <div style={cardBody}>
+         style={{
+           ...cardWrap,
+           transform: hover ? 'translateY(-2px)' : 'none',
+           boxShadow: hover ? 'var(--shadow-lg)' : 'var(--shadow-sm)',
+         }}>
+      {/* Цветная шапка-баннер */}
+      <div style={{
+        height: 70, background: `linear-gradient(135deg, ${color}, ${color}cc)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 14px', position: 'relative',
+      }}>
         <div style={{
-          width: 64, height: 64, borderRadius: 16,
-          background: `linear-gradient(135deg, ${color}, ${color}cc)`,
+          width: 44, height: 44, borderRadius: 12, fontSize: 24,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 32, flexShrink: 0, boxShadow: `0 4px 12px ${color}33`,
+          background: 'rgba(255,255,255,0.25)',
+          border: '1px solid rgba(255,255,255,0.35)',
+          backdropFilter: 'blur(6px)',
         }}>{t.icon_emoji || '✨'}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 17, marginBottom: 4,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {t.name}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={presetBadge}>{preset.icon} {preset.name}</span>
-            <small className="sa-subtle">/{t.slug}</small>
-          </div>
+        <Badge variant="info" style={{ background: 'rgba(255,255,255,0.85)' }}>
+          {preset.icon} {preset.name}
+        </Badge>
+      </div>
+
+      <div style={{ padding: 14 }}>
+        <div style={{ fontWeight: 500, fontSize: 15, marginBottom: 2,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {t.name}
         </div>
+        <small className="sa-faint">/{t.slug}</small>
+
         {isOwner && (
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            <button onClick={handleEdit} disabled={busy} style={editIcon} title="редактировать">✏</button>
-            <button onClick={remove} disabled={busy} style={removeIcon} title="удалить">×</button>
+          <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+            <button onClick={handleEdit} disabled={busy} style={editBtn}>
+              <IconEdit size={13} /> Ред.
+            </button>
+            <button onClick={remove} disabled={busy} style={delBtn} title="удалить">
+              <IconX size={14} />
+            </button>
+            <button onClick={() => onOpen(t.slug)} style={openBtn}>
+              Открыть <IconChevronRight size={14} />
+            </button>
           </div>
         )}
-        <span style={{
-          color: hover ? color : 'var(--text-subtle)',
-          fontSize: 22, transition: 'all 120ms',
-          transform: hover ? 'translateX(2px)' : 'none',
-        }}>→</span>
       </div>
     </div>
   );
 }
 
 const addCard = {
-  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-  padding: 18, borderRadius: 14,
-  background: 'var(--surface)', color: 'var(--accent)',
-  border: '2px dashed var(--border-strong)',
-  fontSize: 15, fontWeight: 500,
+  display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 12,
+  padding: '16px 18px', borderRadius: 'var(--radius-card)',
+  background: 'var(--surface)', color: 'var(--text)',
+  border: `1px dashed var(--accent)`,
+  fontSize: 15, fontWeight: 500, cursor: 'pointer',
 };
-const addCardPlus = {
-  width: 28, height: 28, borderRadius: 8,
+const addCardIcon = {
+  width: 32, height: 32, borderRadius: 8,
   background: 'var(--accent-soft)', color: 'var(--accent)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  fontSize: 20, fontWeight: 600,
+};
+const grid = {
+  display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12,
 };
 const cardWrap = {
-  position: 'relative',
-  background: 'var(--surface)', border: '1px solid var(--border)',
-  borderRadius: 16, overflow: 'hidden', cursor: 'pointer',
-  transition: 'transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease',
+  background: 'var(--surface)', border: '1px solid var(--line)',
+  borderRadius: 'var(--radius-card)', overflow: 'hidden', cursor: 'pointer',
+  transition: 'transform 150ms ease, box-shadow 150ms ease',
 };
-const cardStripe = {
-  position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
-};
-const cardBody = {
-  display: 'flex', alignItems: 'center', gap: 16, width: '100%',
-  padding: '18px 20px 18px 22px',
-};
-const presetBadge = {
-  display: 'inline-flex', alignItems: 'center', gap: 4,
-  padding: '3px 8px', borderRadius: 6, fontSize: 12, fontWeight: 500,
+const editBtn = {
+  flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+  padding: '8px 10px', borderRadius: 8, fontSize: 12, fontWeight: 500,
   background: 'var(--surface-alt)', color: 'var(--text-muted)',
-  border: '1px solid var(--border)',
+  border: '1px solid var(--line)',
 };
-const editIcon = {
-  width: 32, height: 32, borderRadius: 8,
-  background: 'var(--surface)', color: 'var(--text-muted)',
-  border: '1px solid var(--border)', fontSize: 13,
+const delBtn = {
+  width: 30, padding: 8, borderRadius: 8,
+  background: 'var(--surface-alt)', color: 'var(--danger)',
+  border: '1px solid var(--line)',
 };
-const removeIcon = {
+const openBtn = {
+  flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+  padding: '8px 10px', borderRadius: 8, fontSize: 12, fontWeight: 500,
+  background: 'var(--accent)', color: 'var(--accent-text)', border: 0,
+};
+const emptyCard = {
+  background: 'var(--surface)', border: '1px solid var(--line)',
+  borderRadius: 'var(--radius-card)', padding: '40px 20px', textAlign: 'center',
+};
+const formCard = {
+  background: 'var(--surface)', border: '1px solid var(--line)',
+  borderRadius: 'var(--radius-lg)', padding: 20, boxShadow: 'var(--shadow)',
+};
+const previewRow = {
+  display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14,
+  padding: 14, background: 'var(--surface-alt)', borderRadius: 'var(--radius-card)',
+};
+const presetBtn = (active) => ({
+  display: 'flex', alignItems: 'center', gap: 12, padding: 14,
+  borderRadius: 'var(--radius-card)', textAlign: 'left',
+  background: active ? 'var(--accent-soft)' : 'var(--surface)',
+  border: `1px solid ${active ? 'var(--accent)' : 'var(--line)'}`,
+  color: 'var(--text)',
+});
+const closeBtn = {
   width: 32, height: 32, borderRadius: 8,
-  background: 'var(--surface)', color: 'var(--danger)',
-  border: '1px solid var(--border)', fontSize: 18, lineHeight: 1,
+  background: 'var(--surface-alt)', color: 'var(--text-muted)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
 };
 const lbl = {
   display: 'block', fontSize: 13, color: 'var(--text-muted)',
   marginTop: 14, marginBottom: 6, fontWeight: 500,
 };
-const presetBtn = (active) => ({
-  display: 'flex', alignItems: 'center', gap: 12, padding: 14,
-  borderRadius: 12, textAlign: 'left',
-  background: active ? 'var(--accent-soft)' : 'var(--surface)',
-  border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-  color: 'var(--text)', transition: 'all 120ms',
-});
-const ghostBtn = {
-  padding: '6px 10px', borderRadius: 8, fontSize: 13,
-  color: 'var(--text-muted)', background: 'transparent',
-  border: '1px solid var(--border)',
-};
-const btnPrimary = {
-  padding: '12px 18px', borderRadius: 10,
-  background: 'var(--accent)', color: 'var(--accent-text)',
-  fontWeight: 600, fontSize: 15,
-};
 const errBox = {
-  color: 'var(--danger)', fontSize: 14, marginTop: 14,
-  padding: '8px 12px', background: 'rgba(220,38,38,0.06)',
-  borderRadius: 8, border: '1px solid rgba(220,38,38,0.2)',
+  color: 'var(--danger)', fontSize: 13, marginTop: 12,
+  padding: '8px 12px', background: 'var(--danger-soft)',
+  borderRadius: 8, border: '1px solid rgba(220,38,38,0.18)',
 };

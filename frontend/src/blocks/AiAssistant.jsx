@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Button, IconButton, SectionHeader } from '../design/index.js';
+import { IconMessage, IconX, IconArrowRight } from '../design/Icons.jsx';
 import { ui } from './ui.js';
 
 export function AiAssistant({ settings, sa }) {
@@ -41,40 +43,68 @@ export function AiAssistant({ settings, sa }) {
   }
 
   return (
-    <section style={ui.section}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ ...ui.h2, marginBottom: 0 }}>💬 AI-ассистент</h2>
-        {messages.length > 0 && <button onClick={clear} style={ui.ghost}>очистить</button>}
-      </div>
+    <div style={ui.section}>
+      <SectionHeader
+        title="AI-ассистент"
+        actionLabel={messages.length > 0 ? 'очистить' : null}
+        onAction={messages.length > 0 ? clear : undefined}
+      />
 
       <div style={chatBox}>
         {messages.length === 0 && (
-          <div style={{ ...ui.bubble('assistant'), maxWidth: '100%' }}>
-            {greeting}
-          </div>
+          <Bubble role="assistant" first>{greeting}</Bubble>
         )}
         {messages.map((m, i) => (
-          <div key={i} style={ui.bubble(m.role)}>{m.content}</div>
+          <Bubble key={i} role={m.role}>{m.content}</Bubble>
         ))}
         {busy && (
-          <div style={ui.bubble('assistant')}>
-            <span style={dot}></span><span style={{ ...dot, animationDelay: '0.15s' }}></span><span style={{ ...dot, animationDelay: '0.3s' }}></span>
-          </div>
+          <Bubble role="assistant">
+            <span style={dot}></span>
+            <span style={{ ...dot, animationDelay: '0.15s' }}></span>
+            <span style={{ ...dot, animationDelay: '0.3s' }}></span>
+          </Bubble>
         )}
         {err && <div style={errBox}>⚠ {err}</div>}
         <div ref={endRef} />
       </div>
 
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={inputRow}>
         <input value={input} onChange={(e) => setInput(e.target.value)}
                onKeyDown={(e) => e.key === 'Enter' && send()}
-               placeholder="Напиши свой вопрос…" />
-        <button onClick={send} disabled={busy || !input.trim()}
-                style={{ ...ui.primary, padding: '12px 16px' }}>→</button>
+               placeholder="Напиши свой вопрос…"
+               style={{ flex: 1, height: 44, borderRadius: 'var(--radius-pill)', padding: '0 16px' }} />
+        <IconButton icon={IconArrowRight} variant="primary" onClick={send}
+                    disabled={busy || !input.trim()} title="Отправить" />
       </div>
+    </div>
+  );
+}
 
-      <style>{`@keyframes sa-blink { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }`}</style>
-    </section>
+function Bubble({ role, children, first }) {
+  if (role === 'user') {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{
+          maxWidth: '82%', padding: '10px 14px',
+          background: 'var(--accent)', color: 'var(--accent-text)',
+          borderRadius: '16px 16px 4px 16px',
+          fontSize: 14, lineHeight: 1.4, whiteSpace: 'pre-wrap',
+        }}>{children}</div>
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+      <div style={avatar}><IconMessage size={14} color="var(--accent)" /></div>
+      <div style={{
+        maxWidth: '82%', padding: '10px 14px',
+        background: 'var(--surface)', color: 'var(--text)',
+        borderRadius: '16px 16px 16px 4px',
+        border: '1px solid var(--line)',
+        fontSize: 14, lineHeight: 1.4, whiteSpace: 'pre-wrap',
+        boxShadow: 'var(--shadow-sm)',
+      }}>{children}</div>
+    </div>
   );
 }
 
@@ -90,18 +120,28 @@ export function AiAssistantEditor({ settings, onChange }) {
 }
 
 const chatBox = {
-  minHeight: 220, maxHeight: 480, overflow: 'auto',
-  display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12,
-  padding: 16, background: 'var(--surface-alt)', borderRadius: 14,
-  border: '1px solid var(--border)',
+  minHeight: 240, maxHeight: 520, overflow: 'auto',
+  display: 'flex', flexDirection: 'column', gap: 10,
+  marginBottom: 12, padding: 14,
+  background: 'var(--surface-alt)', borderRadius: 'var(--radius-card)',
+  border: '1px solid var(--line)',
+};
+const inputRow = {
+  display: 'flex', alignItems: 'center', gap: 8,
+};
+const avatar = {
+  width: 28, height: 28, borderRadius: '50%',
+  background: 'var(--accent-soft)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  flexShrink: 0,
 };
 const dot = {
   display: 'inline-block', width: 6, height: 6, margin: '0 2px',
-  borderRadius: '50%', background: 'var(--text-muted)',
-  animation: 'sa-blink 1.2s infinite',
+  borderRadius: '50%', background: 'var(--text-faint)',
+  animation: 'sa-pulse 1.2s infinite',
 };
 const errBox = {
-  color: 'var(--danger)', fontSize: 14,
-  padding: '8px 12px', background: 'rgba(220,38,38,0.06)',
-  borderRadius: 8, border: '1px solid rgba(220,38,38,0.2)',
+  color: 'var(--danger)', fontSize: 13,
+  padding: '8px 12px', background: 'var(--danger-soft)',
+  borderRadius: 8, border: '1px solid rgba(220,38,38,0.18)',
 };

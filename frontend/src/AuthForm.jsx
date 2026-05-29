@@ -67,7 +67,7 @@ const logoDot = {
   boxShadow: 'var(--shadow)',
 };
 const card = {
-  background: 'var(--surface)', border: '1px solid var(--border)',
+  background: 'var(--surface)', border: '1px solid var(--line)',
   borderRadius: 'var(--radius-lg)', padding: 24,
   boxShadow: 'var(--shadow)',
 };
@@ -88,5 +88,5 @@ const btnPrimary = {
 const btnSecondary = {
   flex: 1, padding: '12px 16px', borderRadius: 10,
   background: 'var(--surface)', color: 'var(--accent)',
-  border: '1px solid var(--border-strong)', fontWeight: 500, fontSize: 15,
+  border: '1px solid var(--line-strong)', fontWeight: 500, fontSize: 15,
 };

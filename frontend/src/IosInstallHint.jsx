@@ -66,7 +66,7 @@ const num = {
 };
 const iconBox = {
   display: 'inline-block', padding: '1px 6px', borderRadius: 4,
-  background: 'var(--surface-alt)', border: '1px solid var(--border)',
+  background: 'var(--surface-alt)', border: '1px solid var(--line)',
 };
 const btn = {
   marginTop: 20, padding: '12px 24px', borderRadius: 10,
