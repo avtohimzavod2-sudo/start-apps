@@ -3,6 +3,7 @@ import InstallButton from './InstallButton.jsx';
 import ShareButton from './ShareButton.jsx';
 import AuthForm from './AuthForm.jsx';
 import MyTenants from './MyTenants.jsx';
+import IosInstallHint from './IosInstallHint.jsx';
 import MoodJournal from '@templates/mood-journal/index.jsx';
 
 // URL модель:
@@ -85,6 +86,7 @@ export default function App({ sa }) {
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#0a0a14', color: '#fff' }}>
+      <IosInstallHint />
       <header style={hdr}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <strong style={{ cursor: 'pointer' }} onClick={goHome}>Start-Apps</strong>
