@@ -1,5 +1,5 @@
 // Start-Apps SDK — единый объект `sa` с интерфейсом розеток.
-// Шаблоны мини-приложений работают только через `window.sa`, не зная,
+// Шаблоны мини-приложений работают только через `sa`, не зная,
 // чем именно проброшены розетки (HTTP backend, mock, embedded, …).
 //
 // Контракт: contracts/v1.schema.json
@@ -15,8 +15,8 @@ export function createSa({ api, fetchImpl = fetch } = {}) {
     else globalThis.localStorage?.removeItem(TOKEN_KEY);
   };
 
-  async function call(path, { method = 'GET', body } = {}) {
-    const headers = { 'Content-Type': 'application/json' };
+  async function call(path, { method = 'GET', body, extraHeaders } = {}) {
+    const headers = { 'Content-Type': 'application/json', ...(extraHeaders || {}) };
     const tok = getToken();
     if (tok) headers.Authorization = `Bearer ${tok}`;
     const res = await fetchImpl(`${api}${path}`, {
@@ -31,27 +31,29 @@ export function createSa({ api, fetchImpl = fetch } = {}) {
     return res.status === 204 ? null : res.json();
   }
 
-  const storage = {
-    async get(key) {
-      try {
-        const r = await call(`/sa/storage/get/${encodeURIComponent(key)}`);
-        return r.value;
-      } catch (e) {
-        if (String(e).includes('404')) return null;
-        throw e;
-      }
-    },
-    async set(key, value) {
-      await call('/sa/storage/set', { method: 'POST', body: { key, value } });
-    },
-    async del(key) {
-      await call(`/sa/storage/del/${encodeURIComponent(key)}`, { method: 'DELETE' });
-    },
-    async keys() {
-      const r = await call('/sa/storage/keys');
-      return r.keys;
-    },
-  };
+  function makeStorage(tenantHeaders) {
+    return {
+      async get(key) {
+        try {
+          const r = await call(`/sa/storage/get/${encodeURIComponent(key)}`, { extraHeaders: tenantHeaders });
+          return r.value;
+        } catch (e) {
+          if (String(e).includes('404')) return null;
+          throw e;
+        }
+      },
+      async set(key, value) {
+        await call('/sa/storage/set', { method: 'POST', body: { key, value }, extraHeaders: tenantHeaders });
+      },
+      async del(key) {
+        await call(`/sa/storage/del/${encodeURIComponent(key)}`, { method: 'DELETE', extraHeaders: tenantHeaders });
+      },
+      async keys() {
+        const r = await call('/sa/storage/keys', { extraHeaders: tenantHeaders });
+        return r.keys;
+      },
+    };
+  }
 
   const auth = {
     async register(login, password) {
@@ -75,22 +77,39 @@ export function createSa({ api, fetchImpl = fetch } = {}) {
     },
   };
 
-  function withScope(scope) {
-    if (!scope) return { contract: 'v1', storage, auth, scope: null };
-    const prefix = `${scope}:`;
-    const scoped = {
-      async get(key) { return storage.get(prefix + key); },
-      async set(key, value) { return storage.set(prefix + key, value); },
-      async del(key) { return storage.del(prefix + key); },
-      async keys() {
-        const all = await storage.keys();
-        return all.filter((k) => k.startsWith(prefix)).map((k) => k.slice(prefix.length));
-      },
+  const tenants = {
+    async list() {
+      const r = await call('/sa/tenants');
+      return r.tenants;
+    },
+    async create(slug, name) {
+      return call('/sa/tenants', { method: 'POST', body: { slug, name } });
+    },
+    async get(slug) {
+      return call(`/sa/tenants/${encodeURIComponent(slug)}`);
+    },
+  };
+
+  function withTenant(slug) {
+    if (!slug) throw new Error('sa.withTenant: slug required');
+    const headers = { 'X-Tenant-Slug': slug };
+    return {
+      contract: 'v1',
+      tenant: slug,
+      storage: makeStorage(headers),
+      auth,
+      tenants,
     };
-    return { contract: 'v1', storage: scoped, auth, scope };
   }
 
-  return { contract: 'v1', storage, auth, withScope, scope: null };
+  return {
+    contract: 'v1',
+    tenant: null,
+    storage: makeStorage(),
+    auth,
+    tenants,
+    withTenant,
+  };
 }
 
 export default createSa;

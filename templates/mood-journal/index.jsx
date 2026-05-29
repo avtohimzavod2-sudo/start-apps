@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 // Шаблон-пример: работает ТОЛЬКО через переданный sa (контракт v1).
 // Не знает ни про FastAPI, ни про fetch — только про розетки.
-export default function AtmospheraAI({ sa }) {
+export default function MoodJournal({ sa }) {
   const [notes, setNotes] = useState([]);
   const [draft, setDraft] = useState('');
   const [mood, setMood] = useState('🙂');
@@ -29,7 +29,7 @@ export default function AtmospheraAI({ sa }) {
 
   return (
     <section>
-      <h1 style={{ marginTop: 0 }}>Atmosphera AI</h1>
+      <h1 style={{ marginTop: 0 }}>Mood Journal</h1>
       <p style={{ opacity: 0.7 }}>Заметка о настроении момента. Хранится через <code>sa.storage</code>.</p>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>

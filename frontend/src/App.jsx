@@ -2,22 +2,26 @@ import React, { useEffect, useMemo, useState } from 'react';
 import InstallButton from './InstallButton.jsx';
 import ShareButton from './ShareButton.jsx';
 import AuthForm from './AuthForm.jsx';
-import Launcher from './Launcher.jsx';
-import { byId } from './templates.js';
+import MyTenants from './MyTenants.jsx';
+import MoodJournal from '@templates/mood-journal/index.jsx';
 
-// URL ↔ openId:
-//  - ?app=<id>           прямая ссылка на шаблон
-//  - /                   лаунчер
-// browser back/forward работает за счёт popstate + pushState
+// URL модель:
+//   /                    — дашборд владельца (список бизнесов + создание)
+//   /app/<slug>          — клиентское приложение бизнеса <slug>
+// Каждый бизнес — изолированное пространство данных. Клиенты регистрируются
+// один раз на платформе, но их данные привязаны к конкретному бизнесу.
 
-function appFromUrl() {
-  return new URLSearchParams(window.location.search).get('app');
+function slugFromUrl() {
+  const m = window.location.pathname.match(/^\/app\/([a-z0-9-]+)\/?$/i);
+  return m ? m[1].toLowerCase() : null;
 }
 
 export default function App({ sa }) {
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState(null);
-  const [openId, setOpenId] = useState(appFromUrl());
+  const [slug, setSlug] = useState(slugFromUrl());
+  const [tenant, setTenant] = useState(null);
+  const [tenantError, setTenantError] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -28,77 +32,61 @@ export default function App({ sa }) {
     })();
   }, [sa]);
 
-  // browser back/forward — синк URL → state
   useEffect(() => {
-    const onPop = () => setOpenId(appFromUrl());
+    const onPop = () => setSlug(slugFromUrl());
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  // Подмена PWA-манифеста и title под открытое мини-приложение.
-  // start_url каждого манифеста ведёт на /?app=<id>, поэтому установленная
-  // иконка запускает сразу нужный шаблон.
+  // Подгружаем инфо о тенанте когда меняется slug или появляется юзер.
   useEffect(() => {
-    const link = document.querySelector('link[rel="manifest"]');
-    const t = openId ? byId(openId) : null;
-    if (t && link) {
-      link.setAttribute('href', `/apps/${t.id}.webmanifest`);
-      document.title = t.name;
-    } else if (link) {
-      link.setAttribute('href', '/manifest.webmanifest');
-      document.title = 'Start-Apps';
-    }
-  }, [openId]);
+    if (!slug || !user) { setTenant(null); setTenantError(null); return; }
+    setTenantError(null);
+    sa.tenants.get(slug)
+      .then(setTenant)
+      .catch((e) => setTenantError(String(e).includes('404') ? 'Бизнес не найден' : 'Ошибка загрузки'));
+  }, [slug, user, sa]);
 
-  function openTemplate(id) {
-    if (openId === id) return;
-    window.history.pushState({}, '', `?app=${encodeURIComponent(id)}`);
-    setOpenId(id);
+  function openTenant(s) {
+    window.history.pushState({}, '', `/app/${s}`);
+    setSlug(s);
   }
 
-  function closeTemplate() {
-    if (window.history.state && window.history.length > 1) {
-      window.history.back();
-    } else {
-      window.history.pushState({}, '', window.location.pathname);
-      setOpenId(null);
-    }
+  function goHome() {
+    window.history.pushState({}, '', '/');
+    setSlug(null);
   }
 
   function logout() {
     sa.auth.logout();
     setUser(null);
-    setOpenId(null);
-    window.history.replaceState({}, '', window.location.pathname);
   }
+
+  const scopedSa = useMemo(() => (slug ? sa.withTenant(slug) : sa), [sa, slug]);
+  const shareUrl = slug ? `${window.location.origin}/app/${slug}` : null;
 
   if (!ready) return <div style={{ padding: 24 }}>Загрузка…</div>;
 
-  const opened = openId ? byId(openId) : null;
-  const Template = opened?.component;
-  const shareUrl = opened ? `${window.location.origin}/?app=${encodeURIComponent(opened.id)}` : null;
-  // Каждый шаблон видит только свои данные в sa.storage (префикс ключей).
-  const scopedSa = useMemo(() => (opened ? sa.withScope(opened.id) : sa), [sa, opened?.id]);
-
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#0a0a14', color: '#fff' }}>
-      <header style={{ padding: '12px 20px', borderBottom: '1px solid #222', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <header style={hdr}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <strong>Start-Apps · contract {sa.contract}</strong>
-          {opened && (
+          <strong style={{ cursor: 'pointer' }} onClick={goHome}>Start-Apps</strong>
+          {tenant && (
             <>
-              <button onClick={closeTemplate} style={{ background: 'transparent', color: '#6cf', border: '1px solid #6cf', padding: '4px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>
-                ← к приложениям
-              </button>
-              {user && <ShareButton title={opened.name} url={shareUrl} />}
+              <span style={{ opacity: 0.4 }}>›</span>
+              <span>{tenant.name}</span>
+              {user && tenant.owner_login === user.login && (
+                <ShareButton title={tenant.name} url={shareUrl} />
+              )}
             </>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {user ? (
             <>
-              <span>{user.login}</span>
-              <button onClick={logout} style={{ background: 'transparent', color: '#f66', border: '1px solid #f66', padding: '4px 10px', borderRadius: 8, cursor: 'pointer' }}>выйти</button>
+              <span style={{ opacity: 0.7 }}>{user.login}</span>
+              <button onClick={logout} style={btnDanger}>выйти</button>
             </>
           ) : (
             <span style={{ opacity: 0.6 }}>гость</span>
@@ -106,17 +94,49 @@ export default function App({ sa }) {
           <InstallButton />
         </div>
       </header>
+
       <main style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
         {!user ? (
-          <AuthForm sa={sa} onAuth={setUser} />
-        ) : Template ? (
-          <Template sa={scopedSa} />
-        ) : opened ? (
-          <p style={{ opacity: 0.6 }}>Шаблон <code>{openId}</code> не найден. <button onClick={closeTemplate} style={{ color: '#6cf', background: 'transparent', border: 0, cursor: 'pointer', textDecoration: 'underline' }}>к приложениям</button></p>
+          <>
+            {slug && (
+              <div style={hint}>
+                Это страница бизнеса <code>/{slug}</code>. Зарегистрируйся или войди — твои данные привяжутся к этому бизнесу.
+              </div>
+            )}
+            <AuthForm sa={sa} onAuth={setUser} />
+          </>
+        ) : slug ? (
+          tenantError ? (
+            <p style={{ opacity: 0.6 }}>
+              {tenantError}. <button onClick={goHome} style={linkBtn}>← к моим бизнесам</button>
+            </p>
+          ) : tenant ? (
+            <MoodJournal sa={scopedSa} />
+          ) : (
+            <p style={{ opacity: 0.6 }}>загрузка бизнеса…</p>
+          )
         ) : (
-          <Launcher onOpen={openTemplate} />
+          <MyTenants sa={sa} onOpen={openTenant} />
         )}
       </main>
     </div>
   );
 }
+
+const hdr = {
+  padding: '12px 20px', borderBottom: '1px solid #222',
+  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+  gap: 12, flexWrap: 'wrap',
+};
+const btnDanger = {
+  background: 'transparent', color: '#f66', border: '1px solid #f66',
+  padding: '4px 10px', borderRadius: 8, cursor: 'pointer',
+};
+const linkBtn = {
+  color: '#6cf', background: 'transparent', border: 0,
+  cursor: 'pointer', textDecoration: 'underline',
+};
+const hint = {
+  background: '#1a1a2a', padding: 12, borderRadius: 8,
+  marginBottom: 16, fontSize: 14, opacity: 0.9,
+};

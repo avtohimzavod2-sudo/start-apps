@@ -44,7 +44,7 @@ export default function InstallButton() {
     };
     const onInstalled = () => {
       setDeferred(null);
-      setHint('Установлено — найди иконку «Atmosphera» на рабочем столе.');
+      setHint('Установлено — найди иконку «Start-Apps» на рабочем столе.');
     };
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);

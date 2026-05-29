@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .db import init_db
-from .sockets import storage, auth
+from .sockets import storage, auth, tenants
 
 app = FastAPI(
     title="Start-Apps Backend",
@@ -25,6 +25,7 @@ app.add_middleware(
 
 app.include_router(storage.router, prefix="/sa/storage", tags=["sa.storage"])
 app.include_router(auth.router, prefix="/sa/auth", tags=["sa.auth"])
+app.include_router(tenants.router, prefix="/sa/tenants", tags=["sa.tenants"])
 
 
 @app.get("/health")

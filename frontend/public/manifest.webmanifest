@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Start-Apps · Atmosphera AI",
-  "short_name": "Atmosphera",
-  "description": "Заметки о настроении момента. PWA на базе платформы Start-Apps.",
+  "name": "Start-Apps",
+  "short_name": "Start-Apps",
+  "description": "Платформа PWA-мини-приложений для малого бизнеса.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

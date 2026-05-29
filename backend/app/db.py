@@ -1,7 +1,8 @@
 import os
+from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import JSON, Column, ForeignKey, String, UniqueConstraint, create_engine
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, UniqueConstraint, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, relationship, sessionmaker
 
 # По умолчанию — SQLite-файл рядом с backend. Через DATABASE_URL переключается
@@ -15,7 +16,6 @@ if DATABASE_URL.startswith("postgres://"):
 elif DATABASE_URL.startswith("postgresql://") and "+" not in DATABASE_URL.split("://", 1)[0]:
     DATABASE_URL = "postgresql+psycopg://" + DATABASE_URL[len("postgresql://"):]
 
-# SQLite нуждается в check_same_thread=False для FastAPI's threadpool
 _connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
 engine = create_engine(DATABASE_URL, connect_args=_connect_args, future=True)
@@ -31,21 +31,28 @@ class User(Base):
     login = Column(String, primary_key=True)
     password_hash = Column(String, nullable=False)
 
-    kv = relationship("KV", back_populates="user", cascade="all, delete-orphan")
+
+class Tenant(Base):
+    __tablename__ = "tenants"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    slug = Column(String, nullable=False, unique=True, index=True)
+    name = Column(String, nullable=False)
+    owner_login = Column(String, ForeignKey("users.login", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
-class KV(Base):
-    __tablename__ = "kv"
+# Storage attached to (tenant, конкретный пользователь, key).
+# Каждый клиент бизнеса видит только свои данные внутри tenant'а.
+class TenantKV(Base):
+    __tablename__ = "tenant_kv"
+    tenant_id = Column(Integer, ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True)
     user_login = Column(String, ForeignKey("users.login", ondelete="CASCADE"), primary_key=True)
     key = Column(String, primary_key=True)
     value = Column(JSON, nullable=False)
-
-    user = relationship("User", back_populates="kv")
-    __table_args__ = (UniqueConstraint("user_login", "key", name="uq_kv_user_key"),)
+    __table_args__ = (UniqueConstraint("tenant_id", "user_login", "key", name="uq_tkv"),)
 
 
 def init_db() -> None:
-    # SQLite — создать каталог под файл.
     if DATABASE_URL.startswith("sqlite:///"):
         Path(DATABASE_URL.replace("sqlite:///", "", 1)).parent.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(engine)

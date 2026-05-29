@@ -13,7 +13,7 @@ start-apps/
 ├── sdk/              # sa.js — единый интерфейс розеток для шаблонов
 ├── contracts/        # JSON-схема контракта v1
 ├── templates/        # Шаблоны мини-приложений
-│   └── atmosphera-ai/
+│   └── mood-journal/
 └── docker-compose.yml
 ```
 
