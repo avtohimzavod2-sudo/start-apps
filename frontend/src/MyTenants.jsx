@@ -157,42 +157,58 @@ function CreateForm({ sa, onCancel, onCreated }) {
 
 function TenantCard({ t, onOpen, onEdit, onChanged, sa, user }) {
   const [busy, setBusy] = useState(false);
+  const [hover, setHover] = useState(false);
   const isOwner = user && t.owner_login === user.login;
   const preset = presetById(t.template_id);
+  const color = t.color || '#2563eb';
 
-  async function remove() {
-    if (!window.confirm(`Удалить бизнес «${t.name}»? Все данные пропадут.`)) return;
+  async function remove(e) {
+    e.stopPropagation();
+    if (!window.confirm(`Удалить «${t.name}»? Данные пропадут.`)) return;
     setBusy(true);
     try { await sa.tenants.delete(t.slug); await onChanged(); }
     finally { setBusy(false); }
   }
 
+  function handleEdit(e) { e.stopPropagation(); onEdit(t.slug); }
+
   return (
-    <div style={cardWrap}>
-      <button onClick={() => onOpen(t.slug)} disabled={busy} style={cardMain}>
+    <div onClick={() => !busy && onOpen(t.slug)}
+         onMouseEnter={() => setHover(true)}
+         onMouseLeave={() => setHover(false)}
+         style={{ ...cardWrap, transform: hover ? 'translateY(-2px)' : 'none',
+                  boxShadow: hover ? 'var(--shadow-lg)' : 'var(--shadow-sm)',
+                  borderColor: hover ? color : 'var(--border)' }}>
+      <div style={{ ...cardStripe, background: color }} />
+      <div style={cardBody}>
         <div style={{
-          width: 56, height: 56, borderRadius: 14, background: t.color || '#2563eb',
+          width: 64, height: 64, borderRadius: 16,
+          background: `linear-gradient(135deg, ${color}, ${color}cc)`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 28, flexShrink: 0, boxShadow: 'var(--shadow-sm)',
+          fontSize: 32, flexShrink: 0, boxShadow: `0 4px 12px ${color}33`,
         }}>{t.icon_emoji || '✨'}</div>
-        <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-          <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 2,
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 17, marginBottom: 4,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {t.name}
           </div>
-          <small className="sa-muted">
-            {preset.icon} {preset.name} · /{t.slug}
-          </small>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={presetBadge}>{preset.icon} {preset.name}</span>
+            <small className="sa-subtle">/{t.slug}</small>
+          </div>
         </div>
-        <span style={{ color: 'var(--text-subtle)', fontSize: 20 }}>→</span>
-      </button>
-
-      {isOwner && (
-        <div style={cardActions}>
-          <button onClick={() => onEdit(t.slug)} disabled={busy} style={editAction}>✏ редактировать</button>
-          <button onClick={remove} disabled={busy} style={removeAction} title="удалить">×</button>
-        </div>
-      )}
+        {isOwner && (
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <button onClick={handleEdit} disabled={busy} style={editIcon} title="редактировать">✏</button>
+            <button onClick={remove} disabled={busy} style={removeIcon} title="удалить">×</button>
+          </div>
+        )}
+        <span style={{
+          color: hover ? color : 'var(--text-subtle)',
+          fontSize: 22, transition: 'all 120ms',
+          transform: hover ? 'translateX(2px)' : 'none',
+        }}>→</span>
+      </div>
     </div>
   );
 }
@@ -211,25 +227,32 @@ const addCardPlus = {
   fontSize: 20, fontWeight: 600,
 };
 const cardWrap = {
+  position: 'relative',
   background: 'var(--surface)', border: '1px solid var(--border)',
-  borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)',
+  borderRadius: 16, overflow: 'hidden', cursor: 'pointer',
+  transition: 'transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease',
 };
-const cardMain = {
-  display: 'flex', alignItems: 'center', gap: 14, width: '100%',
-  padding: 14, background: 'transparent', color: 'var(--text)',
+const cardStripe = {
+  position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
 };
-const cardActions = {
-  display: 'flex', gap: 1, padding: '0 14px 14px',
+const cardBody = {
+  display: 'flex', alignItems: 'center', gap: 16, width: '100%',
+  padding: '18px 20px 18px 22px',
 };
-const editAction = {
-  flex: 1, padding: '10px 14px', borderRadius: 8,
+const presetBadge = {
+  display: 'inline-flex', alignItems: 'center', gap: 4,
+  padding: '3px 8px', borderRadius: 6, fontSize: 12, fontWeight: 500,
   background: 'var(--surface-alt)', color: 'var(--text-muted)',
-  border: '1px solid var(--border)', fontSize: 13, fontWeight: 500,
-  marginRight: 8,
+  border: '1px solid var(--border)',
 };
-const removeAction = {
-  width: 38, padding: 10, borderRadius: 8,
-  background: 'var(--surface-alt)', color: 'var(--danger)',
+const editIcon = {
+  width: 32, height: 32, borderRadius: 8,
+  background: 'var(--surface)', color: 'var(--text-muted)',
+  border: '1px solid var(--border)', fontSize: 13,
+};
+const removeIcon = {
+  width: 32, height: 32, borderRadius: 8,
+  background: 'var(--surface)', color: 'var(--danger)',
   border: '1px solid var(--border)', fontSize: 18, lineHeight: 1,
 };
 const lbl = {

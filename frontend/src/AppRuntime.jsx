@@ -28,16 +28,22 @@ export default function AppRuntime({ sa, tenant, isOwner }) {
 function TenantHero({ tenant, config }) {
   const biz = config.business || {};
   const status = computeStatusBishkek(config.data?.schedule);
+  const color = tenant.color || '#2563eb';
   return (
-    <div style={hero}>
-      <div style={heroBackdrop} />
+    <div style={{
+      ...hero,
+      background: `linear-gradient(135deg, ${color}, ${color}dd)`,
+    }}>
+      <div style={heroPattern} />
       <div style={heroInner}>
         <div style={heroIcon}>{tenant.icon_emoji}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ marginBottom: 4 }}>{tenant.name}</h1>
+          <h1 style={{ marginBottom: 8, color: '#fff', fontSize: 30 }}>{tenant.name}</h1>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <StatusPill open={status.open} hours={status.hours} />
-            {biz.address && <span className="sa-muted" style={{ fontSize: 14 }}>📍 {biz.address}</span>}
+            {biz.address && (
+              <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)' }}>📍 {biz.address}</span>
+            )}
           </div>
         </div>
       </div>
@@ -49,13 +55,15 @@ function StatusPill({ open, hours }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 6,
-      padding: '4px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500,
-      background: open ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.08)',
-      color: open ? 'var(--success)' : 'var(--danger)',
+      padding: '4px 12px', borderRadius: 999, fontSize: 13, fontWeight: 500,
+      background: 'rgba(255,255,255,0.2)',
+      color: '#fff',
+      backdropFilter: 'blur(8px)',
     }}>
       <span style={{
-        width: 6, height: 6, borderRadius: '50%',
-        background: open ? 'var(--success)' : 'var(--danger)',
+        width: 7, height: 7, borderRadius: '50%',
+        background: open ? '#7af07a' : '#ff8080',
+        boxShadow: open ? '0 0 8px #7af07a' : 'none',
       }} />
       {open ? 'Открыто' : 'Закрыто'}{hours ? ` · ${hours}` : ''}
     </span>
@@ -99,20 +107,25 @@ export function RenderBlocks({ config, sa, isOwner }) {
 }
 
 const hero = {
-  position: 'relative', marginBottom: 28, padding: '24px 4px 24px',
+  position: 'relative', marginBottom: 28,
+  padding: '32px 24px', borderRadius: 20,
+  overflow: 'hidden',
+  boxShadow: 'var(--shadow-lg)',
 };
-const heroBackdrop = {
-  position: 'absolute', inset: '-24px -16px auto -16px', height: 140,
-  background: 'linear-gradient(180deg, var(--accent-soft), transparent)',
-  borderRadius: '0 0 24px 24px', zIndex: 0, pointerEvents: 'none',
+const heroPattern = {
+  position: 'absolute', inset: 0,
+  background: 'radial-gradient(circle at top right, rgba(255,255,255,0.15), transparent 50%)',
+  pointerEvents: 'none',
 };
 const heroInner = {
   position: 'relative', zIndex: 1, display: 'flex',
-  alignItems: 'center', gap: 16, flexWrap: 'wrap',
+  alignItems: 'center', gap: 18, flexWrap: 'wrap',
 };
 const heroIcon = {
-  width: 64, height: 64, borderRadius: 16,
-  background: 'var(--accent)', color: 'var(--accent-text)',
+  width: 72, height: 72, borderRadius: 18,
+  background: 'rgba(255,255,255,0.2)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  fontSize: 34, flexShrink: 0, boxShadow: 'var(--shadow)',
+  fontSize: 38, flexShrink: 0,
+  backdropFilter: 'blur(10px)',
+  border: '1px solid rgba(255,255,255,0.3)',
 };

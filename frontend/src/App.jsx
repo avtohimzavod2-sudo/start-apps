@@ -101,7 +101,7 @@ export default function App({ sa }) {
       <header style={hdr}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <button onClick={goHome} style={brandBtn}>
-            <span style={brandDot} />
+            <span style={brandDot}>S</span>
             <span style={{ fontWeight: 600 }}>Start-Apps</span>
           </button>
           {tenant && (
@@ -174,11 +174,13 @@ const brandBtn = {
   display: 'inline-flex', alignItems: 'center', gap: 8,
   padding: '4px 6px', borderRadius: 8, cursor: 'pointer',
   color: 'var(--text)', background: 'transparent',
+  fontSize: 15,
 };
 const brandDot = {
-  width: 18, height: 18, borderRadius: 5,
-  background: 'linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent) 50%, white))',
-  boxShadow: 'var(--shadow-sm)',
+  width: 22, height: 22, borderRadius: 6,
+  background: 'var(--text)', color: 'var(--bg)',
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-sans)',
 };
 const crumb = { color: 'var(--text-subtle)' };
 const editBtn = {
