@@ -124,10 +124,11 @@ export function createSa({ api, fetchImpl = fetch } = {}) {
   function makeBookings(slug) {
     const base = `/sa/tenants/${encodeURIComponent(slug)}/bookings`;
     return {
-      async create({ service, price, duration, date, time }) {
+      // Бэк сам подтягивает price/duration из tenant.config по имени услуги.
+      async create({ service, date, time }) {
         return call(base, {
           method: 'POST',
-          body: { service, price, duration, date, time },
+          body: { service, date, time },
         });
       },
       async taken(date) {
@@ -137,6 +138,9 @@ export function createSa({ api, fetchImpl = fetch } = {}) {
       async mine() {
         const r = await call(`${base}/mine`);
         return r.bookings;
+      },
+      async cancel(id) {
+        return call(`${base}/${id}`, { method: 'DELETE' });
       },
     };
   }

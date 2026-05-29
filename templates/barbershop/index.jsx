@@ -146,8 +146,6 @@ function Booking({ sa, config, reloadMine, setView }) {
     try {
       const b = await sa.bookings.create({
         service: service.name,
-        price: service.price,
-        duration: service.duration,
         date, time,
       });
       await reloadMine();
