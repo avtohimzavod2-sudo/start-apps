@@ -121,6 +121,26 @@ export function createSa({ api, fetchImpl = fetch } = {}) {
     };
   }
 
+  function makeBookings(slug) {
+    const base = `/sa/tenants/${encodeURIComponent(slug)}/bookings`;
+    return {
+      async create({ service, price, duration, date, time }) {
+        return call(base, {
+          method: 'POST',
+          body: { service, price, duration, date, time },
+        });
+      },
+      async taken(date) {
+        const r = await call(`${base}/taken?date=${encodeURIComponent(date)}`);
+        return r.taken;
+      },
+      async mine() {
+        const r = await call(`${base}/mine`);
+        return r.bookings;
+      },
+    };
+  }
+
   function withTenant(slug) {
     if (!slug) throw new Error('sa.withTenant: slug required');
     const headers = { 'X-Tenant-Slug': slug };
@@ -129,6 +149,7 @@ export function createSa({ api, fetchImpl = fetch } = {}) {
       tenant: slug,
       storage: makeStorage(headers),
       ai: makeAi(headers),
+      bookings: makeBookings(slug),
       auth,
       tenants,
     };

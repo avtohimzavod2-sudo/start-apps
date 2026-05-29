@@ -6,30 +6,29 @@ import React, { useEffect, useMemo, useState } from 'react';
 export default function Barbershop({ sa, tenant, isOwner, user }) {
   const [view, setView] = useState('home');
   const [config, setConfig] = useState(null);
-  const [appointments, setAppointments] = useState([]);
+  const [myBookings, setMyBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  async function reloadMine() {
+    const list = await sa.bookings.mine();
+    setMyBookings(list);
+  }
 
   useEffect(() => {
     (async () => {
-      const [cfg, appts] = await Promise.all([
+      const [cfg, mine] = await Promise.all([
         sa.tenants.getConfig(tenant.slug),
-        sa.storage.get('appointments').then((v) => Array.isArray(v) ? v : []),
+        sa.bookings.mine(),
       ]);
       setConfig(cfg);
-      setAppointments(appts);
+      setMyBookings(mine);
       setLoading(false);
     })();
   }, [sa, tenant.slug]);
 
-  async function addAppointment(appt) {
-    const next = [...appointments, appt];
-    setAppointments(next);
-    await sa.storage.set('appointments', next);
-  }
-
   if (loading) return <div style={{ opacity: 0.6 }}>Загрузка…</div>;
 
-  const props = { sa, tenant, isOwner, user, config, setConfig, appointments, addAppointment, setView };
+  const props = { sa, tenant, isOwner, user, config, setConfig, myBookings, reloadMine, setView };
   return (
     <div>
       <Tabs view={view} setView={setView} isOwner={isOwner} />
@@ -59,9 +58,9 @@ function Tabs({ view, setView, isOwner }) {
   );
 }
 
-function Home({ tenant, config, setView, appointments }) {
+function Home({ tenant, config, setView, myBookings }) {
   const status = computeStatus(config?.schedule || '');
-  const mine = appointments.filter((a) => a.status !== 'cancelled');
+  const mine = myBookings;
   return (
     <section>
       <div style={statusCard(status.open)}>
@@ -114,11 +113,14 @@ function Home({ tenant, config, setView, appointments }) {
   );
 }
 
-function Booking({ config, addAppointment, setView }) {
+function Booking({ sa, config, reloadMine, setView }) {
   const services = config?.services || [];
   const [service, setService] = useState(null);
   const [date, setDate] = useState(todayPlus(0));
   const [time, setTime] = useState('10:00');
+  const [taken, setTaken] = useState(new Set());
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
   const [done, setDone] = useState(null);
 
   const times = useMemo(() => {
@@ -129,19 +131,40 @@ function Booking({ config, addAppointment, setView }) {
     return out;
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    sa.bookings.taken(date).then((arr) => {
+      if (!cancelled) setTaken(new Set(arr));
+    });
+    return () => { cancelled = true; };
+  }, [sa, date, done]);
+
   async function confirm() {
-    if (!service) return;
-    const appt = {
-      id: Date.now(),
-      service: service.name,
-      price: service.price,
-      duration: service.duration,
-      date, time,
-      status: 'booked',
-      createdAt: Date.now(),
-    };
-    await addAppointment(appt);
-    setDone(appt);
+    if (!service || busy || taken.has(time)) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const b = await sa.bookings.create({
+        service: service.name,
+        price: service.price,
+        duration: service.duration,
+        date, time,
+      });
+      await reloadMine();
+      setDone(b);
+    } catch (e) {
+      const msg = String(e);
+      if (msg.includes('409')) {
+        setErr('Этот слот только что заняли. Выбери другое время.');
+        // Перезагрузим занятые
+        const fresh = await sa.bookings.taken(date);
+        setTaken(new Set(fresh));
+      } else {
+        setErr(msg.replace(/^Error:\s*sa:\s*/, ''));
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (done) {
@@ -183,15 +206,31 @@ function Booking({ config, addAppointment, setView }) {
         })}
       </div>
 
-      <label style={lbl}>Время</label>
+      <label style={lbl}>Время <small style={{ opacity: 0.5 }}>(серые — заняты)</small></label>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 16 }}>
-        {times.map((t) => (
-          <button key={t} onClick={() => setTime(t)} style={pillBtn(time === t)}>{t}</button>
-        ))}
+        {times.map((t) => {
+          const isTaken = taken.has(t);
+          return (
+            <button
+              key={t}
+              onClick={() => !isTaken && setTime(t)}
+              disabled={isTaken}
+              style={slotBtn(time === t && !isTaken, isTaken)}
+            >
+              {t}
+            </button>
+          );
+        })}
       </div>
 
-      <button onClick={confirm} disabled={!service} style={{ ...btnPrimary, opacity: service ? 1 : 0.4 }}>
-        Подтвердить запись
+      {err && <div style={{ color: '#f66', fontSize: 13, marginBottom: 8 }}>⚠ {err}</div>}
+
+      <button
+        onClick={confirm}
+        disabled={!service || busy || taken.has(time)}
+        style={{ ...btnPrimary, opacity: (!service || busy || taken.has(time)) ? 0.4 : 1 }}
+      >
+        {busy ? 'бронирую…' : 'Подтвердить запись'}
       </button>
     </section>
   );
@@ -439,6 +478,15 @@ const pillBtn = (active) => ({
   border: `1px solid ${active ? '#6cf' : '#333'}`,
   background: active ? '#6cf' : 'transparent',
   color: active ? '#001' : '#fff', fontSize: 13,
+});
+const slotBtn = (active, isTaken) => ({
+  padding: '8px 12px', borderRadius: 8,
+  cursor: isTaken ? 'not-allowed' : 'pointer',
+  border: `1px solid ${active ? '#6cf' : isTaken ? '#222' : '#333'}`,
+  background: active ? '#6cf' : isTaken ? '#1a1a1a' : 'transparent',
+  color: active ? '#001' : isTaken ? '#555' : '#fff',
+  fontSize: 13,
+  textDecoration: isTaken ? 'line-through' : 'none',
 });
 const bubble = (role) => ({
   alignSelf: role === 'user' ? 'flex-end' : 'flex-start',

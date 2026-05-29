@@ -50,6 +50,24 @@ class Tenant(Base):
     config = Column(JSON, nullable=False, default=dict)
 
 
+class Booking(Base):
+    """Запись на услугу. Слот (tenant_id, date, time) уникален —
+    БД сама не даёт двойную запись на одно время."""
+    __tablename__ = "bookings"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_login = Column(String, ForeignKey("users.login", ondelete="CASCADE"), nullable=False, index=True)
+    service = Column(String, nullable=False)
+    price = Column(Integer, nullable=False, default=0)
+    duration = Column(Integer, nullable=False, default=30)
+    date = Column(String, nullable=False)  # YYYY-MM-DD
+    time = Column(String, nullable=False)  # HH:MM
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "date", "time", name="uq_booking_slot"),
+    )
+
+
 # Storage attached to (tenant, конкретный пользователь, key).
 # Каждый клиент бизнеса видит только свои данные внутри tenant'а.
 class TenantKV(Base):

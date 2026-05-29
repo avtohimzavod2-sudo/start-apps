@@ -1,13 +1,12 @@
 import base64
 import json
 import re
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from ..db import Tenant, TenantKV, get_session
+from ..db import Booking, Tenant, get_session
 from .auth import current_user
 
 router = APIRouter()
@@ -146,20 +145,17 @@ def list_appointments(
     if t.owner_login != login:
         raise HTTPException(403, "only owner can view appointments")
     rows = (
-        db.query(TenantKV.user_login, TenantKV.value)
-        .filter(TenantKV.tenant_id == t.id, TenantKV.key == "appointments")
+        db.query(Booking)
+        .filter(Booking.tenant_id == t.id)
+        .order_by(Booking.date, Booking.time)
         .all()
     )
-    flat: list[dict[str, Any]] = []
-    for user_login, value in rows:
-        if not isinstance(value, list):
-            continue
-        for appt in value:
-            if not isinstance(appt, dict):
-                continue
-            flat.append({**appt, "user_login": user_login})
-    flat.sort(key=lambda a: (a.get("date", ""), a.get("time", "")))
-    return {"appointments": flat}
+    return {"appointments": [
+        {
+            "id": b.id, "service": b.service, "price": b.price, "duration": b.duration,
+            "date": b.date, "time": b.time, "user_login": b.user_login,
+        } for b in rows
+    ]}
 
 
 def _svg_icon(emoji: str, color: str, size: int = 512) -> str:
