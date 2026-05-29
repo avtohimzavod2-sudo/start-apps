@@ -2,11 +2,16 @@ import React, { useEffect, useState } from 'react';
 
 // Дашборд владельца: список бизнесов которые он создал + форма создания.
 // Каждый «бизнес» — это tenant со своим пространством данных.
+const PALETTE = ['#6cf', '#f66', '#fc6', '#9f6', '#c9f', '#fa8', '#6fc', '#f9c'];
+const EMOJI_PRESET = ['✂️', '☕', '🍔', '💇', '💅', '🛒', '📚', '🎵', '🏋️', '🌸', '🍕', '🚗'];
+
 export default function MyTenants({ sa, onOpen }) {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [slug, setSlug] = useState('');
   const [name, setName] = useState('');
+  const [color, setColor] = useState(PALETTE[0]);
+  const [iconEmoji, setIconEmoji] = useState(EMOJI_PRESET[0]);
   const [error, setError] = useState(null);
   const [creating, setCreating] = useState(false);
 
@@ -28,7 +33,7 @@ export default function MyTenants({ sa, onOpen }) {
     if (!s || !n) { setError('заполни оба поля'); return; }
     setCreating(true);
     try {
-      const t = await sa.tenants.create(s, n);
+      const t = await sa.tenants.create({ slug: s, name: n, color, icon_emoji: iconEmoji });
       setSlug(''); setName('');
       await reload();
       onOpen(t.slug);
@@ -49,6 +54,14 @@ export default function MyTenants({ sa, onOpen }) {
 
       <div style={{ background: '#111', borderRadius: 12, padding: 16, marginBottom: 20 }}>
         <h3 style={{ margin: '0 0 12px 0' }}>Создать бизнес</h3>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center' }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: 12, background: color,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 34, flexShrink: 0,
+          }}>{iconEmoji}</div>
+          <div style={{ opacity: 0.6, fontSize: 13 }}>Так будет выглядеть иконка приложения на телефоне клиента.</div>
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <input
             value={name}
@@ -62,6 +75,30 @@ export default function MyTenants({ sa, onOpen }) {
             placeholder="URL (barber-almaz) — латиница, цифры, дефис"
             style={inputStyle}
           />
+
+          <label style={lblStyle}>Цвет</label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {PALETTE.map((c) => (
+              <button key={c} onClick={() => setColor(c)} style={{
+                width: 32, height: 32, borderRadius: 8, background: c,
+                border: color === c ? '3px solid #fff' : '1px solid #333',
+                cursor: 'pointer',
+              }} />
+            ))}
+          </div>
+
+          <label style={lblStyle}>Иконка</label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {EMOJI_PRESET.map((e) => (
+              <button key={e} onClick={() => setIconEmoji(e)} style={{
+                width: 36, height: 36, borderRadius: 8, fontSize: 20,
+                background: iconEmoji === e ? '#222' : '#0a0a14',
+                border: iconEmoji === e ? '2px solid #6cf' : '1px solid #333',
+                cursor: 'pointer', color: '#fff',
+              }}>{e}</button>
+            ))}
+          </div>
+
           <button onClick={create} disabled={creating} style={btnPrimary}>
             {creating ? 'создаю…' : 'Создать'}
           </button>
@@ -87,11 +124,20 @@ export default function MyTenants({ sa, onOpen }) {
               onClick={() => onOpen(t.slug)}
               style={cardStyle}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <strong>{t.name}</strong>
-                <span style={{ opacity: 0.5, fontSize: 13 }}>/{t.slug}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 48, height: 48, borderRadius: 10, background: t.color || '#6cf',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 26, flexShrink: 0,
+                }}>{t.icon_emoji || '✨'}</div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <strong>{t.name}</strong>
+                    <span style={{ opacity: 0.5, fontSize: 13 }}>/{t.slug}</span>
+                  </div>
+                  <small style={{ opacity: 0.5 }}>создан {new Date(t.created_at).toLocaleDateString()}</small>
+                </div>
               </div>
-              <small style={{ opacity: 0.5 }}>создан {new Date(t.created_at).toLocaleDateString()}</small>
             </button>
           ))}
         </div>
@@ -113,5 +159,6 @@ const btnPrimary = {
 const cardStyle = {
   textAlign: 'left', background: '#111', border: '1px solid #222',
   borderRadius: 10, padding: 14, cursor: 'pointer', color: '#fff',
-  display: 'flex', flexDirection: 'column', gap: 4,
 };
+
+const lblStyle = { fontSize: 13, opacity: 0.6, marginTop: 8 };

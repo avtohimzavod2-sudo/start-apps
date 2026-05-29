@@ -2,7 +2,8 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, UniqueConstraint, create_engine
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, UniqueConstraint, create_engine, text
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import DeclarativeBase, Session, relationship, sessionmaker
 
 # По умолчанию — SQLite-файл рядом с backend. Через DATABASE_URL переключается
@@ -39,6 +40,9 @@ class Tenant(Base):
     name = Column(String, nullable=False)
     owner_login = Column(String, ForeignKey("users.login", ondelete="CASCADE"), nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    # Брендинг — цвет фона иконки PWA и эмодзи на ней.
+    color = Column(String, nullable=False, default="#6cf")
+    icon_emoji = Column(String, nullable=False, default="✨")
 
 
 # Storage attached to (tenant, конкретный пользователь, key).
@@ -56,6 +60,23 @@ def init_db() -> None:
     if DATABASE_URL.startswith("sqlite:///"):
         Path(DATABASE_URL.replace("sqlite:///", "", 1)).parent.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(engine)
+    # Лёгкая ручная миграция: добавляем новые колонки если их нет.
+    _ensure_columns()
+
+
+def _ensure_columns() -> None:
+    # Каждый ALTER в своей транзакции, иначе Postgres откатит всё пакетом.
+    stmts = [
+        "ALTER TABLE tenants ADD COLUMN color VARCHAR DEFAULT '#6cf' NOT NULL",
+        "ALTER TABLE tenants ADD COLUMN icon_emoji VARCHAR DEFAULT '✨' NOT NULL",
+    ]
+    for sql in stmts:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(sql))
+        except (OperationalError, ProgrammingError):
+            # Колонка уже существует — пропускаем.
+            pass
 
 
 def get_session() -> Session:

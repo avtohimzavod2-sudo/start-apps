@@ -47,6 +47,22 @@ export default function App({ sa }) {
       .catch((e) => setTenantError(String(e).includes('404') ? 'Бизнес не найден' : 'Ошибка загрузки'));
   }, [slug, user, sa]);
 
+  // Подмена PWA-манифеста и theme-color под открытый бизнес.
+  // Установленная иконка получит имя/цвет/эмодзи конкретного tenant'а.
+  useEffect(() => {
+    const link = document.querySelector('link[rel="manifest"]');
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (slug && tenant && link) {
+      link.setAttribute('href', sa.tenants.manifestUrl(slug));
+      document.title = tenant.name;
+      if (themeMeta) themeMeta.setAttribute('content', tenant.color || '#0a0a14');
+    } else if (link) {
+      link.setAttribute('href', '/manifest.webmanifest');
+      document.title = 'Start-Apps';
+      if (themeMeta) themeMeta.setAttribute('content', '#0a0a14');
+    }
+  }, [slug, tenant, sa]);
+
   function openTenant(s) {
     window.history.pushState({}, '', `/app/${s}`);
     setSlug(s);

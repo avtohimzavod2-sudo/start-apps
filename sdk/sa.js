@@ -82,11 +82,17 @@ export function createSa({ api, fetchImpl = fetch } = {}) {
       const r = await call('/sa/tenants');
       return r.tenants;
     },
-    async create(slug, name) {
-      return call('/sa/tenants', { method: 'POST', body: { slug, name } });
+    async create({ slug, name, color, icon_emoji }) {
+      return call('/sa/tenants', { method: 'POST', body: { slug, name, color, icon_emoji } });
+    },
+    async update(slug, patch) {
+      return call(`/sa/tenants/${encodeURIComponent(slug)}`, { method: 'PATCH', body: patch });
     },
     async get(slug) {
       return call(`/sa/tenants/${encodeURIComponent(slug)}`);
+    },
+    manifestUrl(slug) {
+      return `${api}/sa/tenants/${encodeURIComponent(slug)}/manifest.webmanifest`;
     },
   };
 
@@ -104,6 +110,7 @@ export function createSa({ api, fetchImpl = fetch } = {}) {
 
   return {
     contract: 'v1',
+    api,
     tenant: null,
     storage: makeStorage(),
     auth,
