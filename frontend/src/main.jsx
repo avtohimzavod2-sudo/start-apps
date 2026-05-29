@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { createSa } from '@sdk/sa.js';
 import App from './App.jsx';
+import './index.css';
 
 const api = import.meta.env.VITE_SA_API || 'http://localhost:8000';
 const sa = createSa({ api });

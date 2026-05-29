@@ -136,9 +136,15 @@ export default function AppBuilder({ sa, tenant, onClose }) {
         {savedAt && <small style={{ opacity: 0.6 }}>✓ {new Date(savedAt).toLocaleTimeString()}</small>}
       </header>
 
-      {err && <div style={{ color: '#f66', fontSize: 14 }}>⚠ {err}</div>}
+      {err && (
+        <div style={{ color: 'var(--danger)', fontSize: 14,
+                      padding: '8px 12px', background: 'rgba(220,38,38,0.06)',
+                      borderRadius: 8, border: '1px solid rgba(220,38,38,0.2)' }}>⚠ {err}</div>
+      )}
       {allGaps.length > 0 && (
-        <div style={{ background: '#2a1f10', border: '1px solid #ca6', borderRadius: 8, padding: 12 }}>
+        <div style={{ background: 'rgba(180,83,9,0.06)',
+                      border: '1px solid rgba(180,83,9,0.25)',
+                      borderRadius: 10, padding: 14, color: 'var(--warning)' }}>
           <b>Нужно заполнить:</b>
           <ul style={{ margin: '6px 0 0 20px', padding: 0 }}>
             {allGaps.map((g, i) => <li key={i} style={{ fontSize: 13 }}>{g}</li>)}
@@ -160,22 +166,25 @@ export default function AppBuilder({ sa, tenant, onClose }) {
                    onDragOver={onDragOver}
                    onDrop={() => onDrop(b.id)}
                    style={{
-                     background: isSel ? '#1a2a3a' : '#111',
-                     border: `1px solid ${isSel ? '#6cf' : gaps.length ? '#ca6' : '#222'}`,
-                     borderRadius: 10, padding: 10,
-                     display: 'flex', alignItems: 'center', gap: 8,
-                     cursor: 'grab',
+                     background: isSel ? 'var(--accent-soft)' : 'var(--surface)',
+                     border: `1px solid ${isSel ? 'var(--accent)' : gaps.length ? 'var(--warning)' : 'var(--border)'}`,
+                     borderRadius: 12, padding: 12,
+                     display: 'flex', alignItems: 'center', gap: 10,
+                     cursor: 'grab', boxShadow: 'var(--shadow-sm)',
                    }}>
-                <span style={{ opacity: 0.4, cursor: 'grab' }}>⋮⋮</span>
-                <span style={{ fontSize: 20 }}>{def?.icon || '❓'}</span>
+                <span style={{ color: 'var(--text-subtle)', cursor: 'grab' }}>⋮⋮</span>
+                <span style={{ fontSize: 22 }}>{def?.icon || '❓'}</span>
                 <button onClick={() => setSelectedId(isSel ? null : b.id)}
-                        style={{ flex: 1, background: 'transparent', border: 0, color: '#fff', textAlign: 'left', cursor: 'pointer' }}>
-                  <div><b>{def?.label || b.type}</b>{def?.ownerOnly && <small style={{ opacity: 0.5 }}> · для владельца</small>}</div>
-                  {gaps.length > 0 && <small style={{ color: '#ca6' }}>⚠ {gaps[0]}</small>}
+                        style={{ flex: 1, background: 'transparent', textAlign: 'left' }}>
+                  <div style={{ fontWeight: 600, color: 'var(--text)' }}>
+                    {def?.label || b.type}
+                    {def?.ownerOnly && <small className="sa-subtle" style={{ fontWeight: 400, marginLeft: 6 }}>· для владельца</small>}
+                  </div>
+                  {gaps.length > 0 && <small style={{ color: 'var(--warning)' }}>⚠ {gaps[0]}</small>}
                 </button>
-                <button onClick={() => moveBlock(b.id, -1)} disabled={idx === 0} style={ui.ghost} title="вверх">↑</button>
-                <button onClick={() => moveBlock(b.id, 1)} disabled={idx === draft.blocks.length - 1} style={ui.ghost} title="вниз">↓</button>
-                <button onClick={() => removeBlock(b.id)} style={ui.danger} title="удалить">×</button>
+                <button onClick={() => moveBlock(b.id, -1)} disabled={idx === 0} style={iconBtn} title="вверх">↑</button>
+                <button onClick={() => moveBlock(b.id, 1)} disabled={idx === draft.blocks.length - 1} style={iconBtn} title="вниз">↓</button>
+                <button onClick={() => removeBlock(b.id)} style={{ ...iconBtn, color: 'var(--danger)' }} title="удалить">×</button>
               </div>
             );
           })}
@@ -196,8 +205,8 @@ export default function AppBuilder({ sa, tenant, onClose }) {
                     <button key={def.type} onClick={() => addBlock(def.type)}
                             style={{ ...ui.pickRow(false), gridTemplateColumns: 'auto 1fr auto' }}>
                       <span style={{ fontSize: 22 }}>{def.icon}</span>
-                      <span><b>{def.label}</b>{def.ownerOnly && <small style={{ opacity: 0.5 }}> · только владелец</small>}</span>
-                      <span style={{ color: '#6cf' }}>+</span>
+                      <span><b>{def.label}</b>{def.ownerOnly && <small className="sa-subtle"> · только владелец</small>}</span>
+                      <span style={{ color: 'var(--accent)' }}>+</span>
                     </button>
                   ))}
                 </div>
@@ -234,6 +243,12 @@ export default function AppBuilder({ sa, tenant, onClose }) {
     </div>
   );
 }
+
+const iconBtn = {
+  width: 32, height: 32, borderRadius: 8,
+  background: 'var(--surface)', color: 'var(--text-muted)',
+  border: '1px solid var(--border)', fontSize: 14,
+};
 
 function BusinessEditor({ draft, setBusiness, setSchedule, setService, addService, removeService }) {
   const biz = draft.business || {};

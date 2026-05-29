@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 
-// Простая форма «либо вход, либо регистрация» — обе кнопки рядом,
-// один и тот же набор полей. После успеха вызывает onAuth(user).
 export default function AuthForm({ sa, onAuth }) {
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
@@ -10,51 +8,85 @@ export default function AuthForm({ sa, onAuth }) {
 
   async function submit(kind) {
     if (!login.trim() || !password) {
-      setError('логин и пароль обязательны');
+      setError('Логин и пароль обязательны');
       return;
     }
-    setBusy(true);
-    setError(null);
+    setBusy(true); setError(null);
     try {
       await sa.auth[kind](login.trim(), password);
-      const user = await sa.auth.me();
-      onAuth(user);
+      onAuth(await sa.auth.me());
     } catch (e) {
       const msg = String(e.message || e);
-      if (msg.includes('409')) setError('такой логин уже занят');
-      else if (msg.includes('401')) setError('неверный логин или пароль');
-      else setError(msg);
-    } finally {
-      setBusy(false);
-    }
+      if (msg.includes('409')) setError('Такой логин уже занят');
+      else if (msg.includes('401')) setError('Неверный логин или пароль');
+      else setError(msg.replace(/^sa:\s*/, ''));
+    } finally { setBusy(false); }
   }
 
-  const input = {
-    width: '100%', padding: 10, borderRadius: 8,
-    border: '1px solid #333', background: '#111', color: '#fff', boxSizing: 'border-box',
-  };
-  const btn = (primary) => ({
-    flex: 1, padding: '10px 14px', borderRadius: 8, cursor: 'pointer',
-    border: primary ? 0 : '1px solid #6cf',
-    background: primary ? '#6cf' : 'transparent',
-    color: primary ? '#001' : '#6cf', fontWeight: 600,
-  });
-
   return (
-    <div style={{ maxWidth: 360, margin: '40px auto', padding: 20, background: '#111', borderRadius: 12 }}>
-      <h2 style={{ marginTop: 0 }}>Войти</h2>
-      <p style={{ opacity: 0.6, marginTop: 0 }}>Заметки привяжутся к твоему аккаунту.</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <input style={input} placeholder="логин" value={login}
-               onChange={(e) => setLogin(e.target.value)} autoComplete="username" />
-        <input style={input} placeholder="пароль" type="password" value={password}
-               onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
-        {error && <div style={{ color: '#f66', fontSize: 14 }}>{error}</div>}
-        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-          <button style={btn(true)}  disabled={busy} onClick={() => submit('login')}>Войти</button>
-          <button style={btn(false)} disabled={busy} onClick={() => submit('register')}>Регистрация</button>
+    <div style={wrap}>
+      <div style={logo}>
+        <div style={logoDot} />
+      </div>
+      <h1 style={{ marginBottom: 6, textAlign: 'center' }}>Добро пожаловать</h1>
+      <p className="sa-muted" style={{ textAlign: 'center', marginBottom: 24 }}>
+        Войди или зарегистрируйся — это бесплатно.
+      </p>
+
+      <div style={card}>
+        <label style={lbl}>Логин</label>
+        <input value={login} onChange={(e) => setLogin(e.target.value)}
+               autoComplete="username" placeholder="например, almaz" />
+
+        <label style={lbl}>Пароль</label>
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+               autoComplete="current-password" placeholder="минимум 6 символов" />
+
+        {error && <div style={err}>⚠ {error}</div>}
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+          <button onClick={() => submit('login')} disabled={busy} style={btnPrimary}>
+            {busy ? 'Минуту…' : 'Войти'}
+          </button>
+          <button onClick={() => submit('register')} disabled={busy} style={btnSecondary}>
+            Регистрация
+          </button>
         </div>
       </div>
     </div>
   );
 }
+
+const wrap = { maxWidth: 380, margin: '40px auto' };
+const logo = {
+  display: 'flex', justifyContent: 'center', marginBottom: 24,
+};
+const logoDot = {
+  width: 56, height: 56, borderRadius: 14,
+  background: 'linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent) 50%, white))',
+  boxShadow: 'var(--shadow)',
+};
+const card = {
+  background: 'var(--surface)', border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-lg)', padding: 24,
+  boxShadow: 'var(--shadow)',
+};
+const lbl = {
+  display: 'block', fontSize: 13, color: 'var(--text-muted)',
+  marginTop: 12, marginBottom: 6, fontWeight: 500,
+};
+const err = {
+  color: 'var(--danger)', fontSize: 14, marginTop: 12,
+  padding: '8px 12px', background: 'rgba(220,38,38,0.06)',
+  borderRadius: 8, border: '1px solid rgba(220,38,38,0.2)',
+};
+const btnPrimary = {
+  flex: 1, padding: '12px 16px', borderRadius: 10,
+  background: 'var(--accent)', color: 'var(--accent-text)',
+  fontWeight: 600, fontSize: 15,
+};
+const btnSecondary = {
+  flex: 1, padding: '12px 16px', borderRadius: 10,
+  background: 'var(--surface)', color: 'var(--accent)',
+  border: '1px solid var(--border-strong)', fontWeight: 500, fontSize: 15,
+};

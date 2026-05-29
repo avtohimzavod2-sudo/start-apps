@@ -1,135 +1,50 @@
 import React, { useEffect, useState } from 'react';
 import { PRESETS, presetById } from './presets.js';
 
-// Дашборд владельца: список бизнесов которые он создал + форма создания.
-// Каждый «бизнес» — tenant с пресетом блоков и своим пространством данных.
-
-const PALETTE = ['#6cf', '#f66', '#fc6', '#9f6', '#c9f', '#fa8', '#6fc', '#f9c'];
+const PALETTE = ['#2563eb', '#dc2626', '#d97706', '#16a34a', '#7c3aed', '#db2777', '#0891b2', '#65a30d'];
 const EMOJI_PRESET = ['✂️', '☕', '🍔', '💇', '💅', '🛒', '📚', '🎵', '🏋️', '🌸', '🍕', '🚗'];
 
 export default function MyTenants({ sa, onOpen, onEdit, user }) {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [slug, setSlug] = useState('');
-  const [name, setName] = useState('');
-  const [color, setColor] = useState(PALETTE[0]);
-  const [iconEmoji, setIconEmoji] = useState(EMOJI_PRESET[0]);
-  const [templateId, setTemplateId] = useState(PRESETS[0].id);
-  const [error, setError] = useState(null);
-  const [creating, setCreating] = useState(false);
+  const [open, setOpen] = useState(false);
 
   async function reload() {
     setLoading(true);
     try { setList(await sa.tenants.list()); } finally { setLoading(false); }
   }
-
   useEffect(() => { reload(); }, []);
 
-  async function create() {
-    setError(null);
-    const s = slug.trim().toLowerCase();
-    const n = name.trim();
-    if (!s || !n) { setError('заполни имя и URL'); return; }
-    setCreating(true);
-    try {
-      const t = await sa.tenants.create({
-        slug: s, name: n, color, icon_emoji: iconEmoji,
-        template_id: templateId,
-      });
-      setSlug(''); setName('');
-      await reload();
-      onEdit(t.slug);  // после создания сразу в конструктор — заполнить услуги/график
-    } catch (e) {
-      setError(String(e).replace(/^Error:\s*sa:\s*/, ''));
-    } finally { setCreating(false); }
-  }
-
   return (
-    <section>
-      <h1 style={{ marginTop: 0 }}>Мои бизнесы</h1>
-      <p style={{ opacity: 0.7 }}>
-        Каждый бизнес — отдельное PWA-приложение с уникальной иконкой и набором блоков.
-        Поделись ссылкой с клиентами — они зарегистрируются и начнут пользоваться.
-      </p>
+    <section className="sa-stack">
+      <header style={{ marginBottom: 4 }}>
+        <h1>Мои бизнесы</h1>
+        <p className="sa-muted" style={{ marginTop: 4 }}>
+          Каждый бизнес — отдельное PWA-приложение с иконкой на телефоне клиентов.
+        </p>
+      </header>
 
-      <div style={{ background: '#111', borderRadius: 12, padding: 16, marginBottom: 20 }}>
-        <h3 style={{ margin: '0 0 12px 0' }}>Создать бизнес</h3>
-
-        <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center' }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: 12, background: color,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 34, flexShrink: 0,
-          }}>{iconEmoji}</div>
-          <small style={{ opacity: 0.6 }}>Так будет выглядеть иконка приложения на телефоне клиента.</small>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <label style={{ ...lblStyle, marginTop: 0 }}>Тип приложения</label>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {PRESETS.map((p) => (
-              <button key={p.id} onClick={() => setTemplateId(p.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: 10,
-                  borderRadius: 8, cursor: 'pointer', textAlign: 'left',
-                  background: templateId === p.id ? '#1a2a3a' : '#0a0a14',
-                  border: `1px solid ${templateId === p.id ? '#6cf' : '#333'}`,
-                  color: '#fff',
-                }}>
-                <span style={{ fontSize: 22 }}>{p.icon}</span>
-                <span style={{ display: 'flex', flexDirection: 'column' }}>
-                  <b>{p.name}</b>
-                  <small style={{ opacity: 0.6 }}>{p.tagline}</small>
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <input value={name} onChange={(e) => setName(e.target.value)}
-                 placeholder="Название (Барбер Алмаз)" style={inputStyle} />
-          <input value={slug}
-                 onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                 placeholder="URL (barber-almaz)" style={inputStyle} />
-
-          <label style={lblStyle}>Цвет</label>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {PALETTE.map((c) => (
-              <button key={c} onClick={() => setColor(c)} style={{
-                width: 32, height: 32, borderRadius: 8, background: c,
-                border: color === c ? '3px solid #fff' : '1px solid #333', cursor: 'pointer',
-              }} />
-            ))}
-          </div>
-
-          <label style={lblStyle}>Иконка</label>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {EMOJI_PRESET.map((e) => (
-              <button key={e} onClick={() => setIconEmoji(e)} style={{
-                width: 36, height: 36, borderRadius: 8, fontSize: 20,
-                background: iconEmoji === e ? '#222' : '#0a0a14',
-                border: iconEmoji === e ? '2px solid #6cf' : '1px solid #333',
-                cursor: 'pointer', color: '#fff',
-              }}>{e}</button>
-            ))}
-          </div>
-
-          <button onClick={create} disabled={creating} style={btnPrimary}>
-            {creating ? 'создаю…' : 'Создать и настроить'}
-          </button>
-          {error && <div style={{ color: '#f66', fontSize: 14 }}>⚠ {error}</div>}
-          {slug && (
-            <small style={{ opacity: 0.5 }}>URL клиентам: {window.location.origin}/app/{slug}</small>
-          )}
-        </div>
-      </div>
-
-      <h3>Существующие</h3>
-      {loading ? (
-        <p style={{ opacity: 0.5 }}>загрузка…</p>
-      ) : list.length === 0 ? (
-        <p style={{ opacity: 0.5 }}>Пока ни одного. Создай первый выше.</p>
+      {!open ? (
+        <button onClick={() => setOpen(true)} style={addCard}>
+          <span style={addCardPlus}>+</span>
+          <span>Создать новый бизнес</span>
+        </button>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <CreateForm sa={sa} onCancel={() => setOpen(false)} onCreated={(t) => { setOpen(false); reload(); onEdit(t.slug); }} />
+      )}
+
+      <div style={{ height: 8 }} />
+
+      {loading ? (
+        <p className="sa-muted">Загрузка…</p>
+      ) : list.length === 0 ? (
+        <div className="sa-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>🏪</div>
+          <p style={{ marginBottom: 4 }}>Пока ни одного бизнеса</p>
+          <p className="sa-muted" style={{ fontSize: 14 }}>Создай первый — займёт минуту.</p>
+        </div>
+      ) : (
+        <div className="sa-stack">
           {list.map((t) => (
             <TenantCard key={t.id} t={t} onOpen={onOpen} onEdit={onEdit} onChanged={reload} sa={sa} user={user} />
           ))}
@@ -139,86 +54,207 @@ export default function MyTenants({ sa, onOpen, onEdit, user }) {
   );
 }
 
+function CreateForm({ sa, onCancel, onCreated }) {
+  const [slug, setSlug] = useState('');
+  const [name, setName] = useState('');
+  const [color, setColor] = useState(PALETTE[0]);
+  const [iconEmoji, setIconEmoji] = useState(EMOJI_PRESET[0]);
+  const [templateId, setTemplateId] = useState(PRESETS[0].id);
+  const [error, setError] = useState(null);
+  const [creating, setCreating] = useState(false);
+
+  async function create() {
+    setError(null);
+    const s = slug.trim().toLowerCase();
+    const n = name.trim();
+    if (!s || !n) { setError('Заполни имя и URL'); return; }
+    setCreating(true);
+    try {
+      const t = await sa.tenants.create({ slug: s, name: n, color, icon_emoji: iconEmoji, template_id: templateId });
+      onCreated(t);
+    } catch (e) {
+      setError(String(e).replace(/^Error:\s*sa:\s*/, ''));
+    } finally { setCreating(false); }
+  }
+
+  return (
+    <div className="sa-card sa-appear">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h3 style={{ margin: 0 }}>Новый бизнес</h3>
+        <button onClick={onCancel} style={ghostBtn}>отменить</button>
+      </div>
+
+      {/* Превью иконки */}
+      <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 16 }}>
+        <div style={{
+          width: 72, height: 72, borderRadius: 16, background: color,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 36, flexShrink: 0, boxShadow: 'var(--shadow)',
+        }}>{iconEmoji}</div>
+        <div className="sa-muted" style={{ fontSize: 13 }}>
+          Такая иконка появится на телефоне клиента при установке.
+        </div>
+      </div>
+
+      <label style={lbl}>Тип приложения</label>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+        {PRESETS.map((p) => (
+          <button key={p.id} onClick={() => setTemplateId(p.id)} style={presetBtn(templateId === p.id)}>
+            <span style={{ fontSize: 24 }}>{p.icon}</span>
+            <span style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+              <b>{p.name}</b>
+              <small className="sa-muted">{p.tagline}</small>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <label style={lbl}>Название бизнеса</label>
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Барбер Алмаз" />
+
+      <label style={lbl}>URL для клиентов</label>
+      <input value={slug}
+             onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+             placeholder="barber-almaz" />
+      {slug && (
+        <small className="sa-subtle" style={{ display: 'block', marginTop: 4 }}>
+          {window.location.origin}/app/<b style={{ color: 'var(--accent)' }}>{slug}</b>
+        </small>
+      )}
+
+      <label style={lbl}>Цвет бренда</label>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {PALETTE.map((c) => (
+          <button key={c} onClick={() => setColor(c)} aria-label={`Цвет ${c}`}
+                  style={{
+                    width: 36, height: 36, borderRadius: 10, background: c,
+                    border: color === c ? '3px solid var(--text)' : '1px solid var(--border)',
+                    transition: 'transform 100ms',
+                    transform: color === c ? 'scale(1.05)' : 'scale(1)',
+                  }} />
+        ))}
+      </div>
+
+      <label style={lbl}>Иконка</label>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {EMOJI_PRESET.map((e) => (
+          <button key={e} onClick={() => setIconEmoji(e)} style={{
+            width: 40, height: 40, borderRadius: 10, fontSize: 22,
+            background: iconEmoji === e ? 'var(--accent-soft)' : 'var(--surface)',
+            border: `1px solid ${iconEmoji === e ? 'var(--accent)' : 'var(--border)'}`,
+          }}>{e}</button>
+        ))}
+      </div>
+
+      {error && <div style={errBox}>⚠ {error}</div>}
+
+      <button onClick={create} disabled={creating} style={{ ...btnPrimary, width: '100%', marginTop: 20 }}>
+        {creating ? 'Создаю…' : 'Создать и настроить'}
+      </button>
+    </div>
+  );
+}
+
 function TenantCard({ t, onOpen, onEdit, onChanged, sa, user }) {
   const [busy, setBusy] = useState(false);
   const isOwner = user && t.owner_login === user.login;
+  const preset = presetById(t.template_id);
 
-  async function changeTemplate(newId) {
-    if (newId === t.template_id) return;
-    setBusy(true);
-    try { await sa.tenants.update(t.slug, { template_id: newId }); await onChanged(); }
-    finally { setBusy(false); }
-  }
   async function remove() {
-    if (!window.confirm(`Удалить бизнес «${t.name}» и все его данные? Отменить нельзя.`)) return;
+    if (!window.confirm(`Удалить бизнес «${t.name}»? Все данные пропадут.`)) return;
     setBusy(true);
     try { await sa.tenants.delete(t.slug); await onChanged(); }
     finally { setBusy(false); }
   }
 
-  const preset = presetById(t.template_id);
-
   return (
-    <div style={{ background: '#111', border: '1px solid #222', borderRadius: 10, padding: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div style={cardWrap}>
+      <button onClick={() => onOpen(t.slug)} disabled={busy} style={cardMain}>
         <div style={{
-          width: 48, height: 48, borderRadius: 10, background: t.color || '#6cf',
+          width: 56, height: 56, borderRadius: 14, background: t.color || '#2563eb',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 26, flexShrink: 0,
+          fontSize: 28, flexShrink: 0, boxShadow: 'var(--shadow-sm)',
         }}>{t.icon_emoji || '✨'}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-            <strong style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</strong>
-            <span style={{ opacity: 0.5, fontSize: 13 }}>/{t.slug}</span>
+        <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+          <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 2,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {t.name}
           </div>
-          <small style={{ opacity: 0.5 }}>
-            {preset.icon} {preset.name} · создан {new Date(t.created_at).toLocaleDateString()}
+          <small className="sa-muted">
+            {preset.icon} {preset.name} · /{t.slug}
           </small>
         </div>
-      </div>
-      <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-        <button onClick={() => onOpen(t.slug)} disabled={busy} style={btnOpen}>открыть →</button>
-        {isOwner && (
-          <button onClick={() => onEdit(t.slug)} disabled={busy} style={btnEdit}>✏ редактировать</button>
-        )}
-        {isOwner && (
-          <>
-            <select value={t.template_id} onChange={(e) => changeTemplate(e.target.value)}
-                    disabled={busy} style={selectStyle} title="тип пресета">
-              {PRESETS.map((p) => (
-                <option key={p.id} value={p.id}>{p.icon} {p.name}</option>
-              ))}
-            </select>
-            <button onClick={remove} disabled={busy} style={btnDanger} title="удалить">×</button>
-          </>
-        )}
-      </div>
+        <span style={{ color: 'var(--text-subtle)', fontSize: 20 }}>→</span>
+      </button>
+
+      {isOwner && (
+        <div style={cardActions}>
+          <button onClick={() => onEdit(t.slug)} disabled={busy} style={editAction}>✏ редактировать</button>
+          <button onClick={remove} disabled={busy} style={removeAction} title="удалить">×</button>
+        </div>
+      )}
     </div>
   );
 }
 
-const inputStyle = {
-  padding: 10, borderRadius: 8, border: '1px solid #333',
-  background: '#0a0a14', color: '#fff', fontSize: 14,
+const addCard = {
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+  padding: 18, borderRadius: 14,
+  background: 'var(--surface)', color: 'var(--accent)',
+  border: '2px dashed var(--border-strong)',
+  fontSize: 15, fontWeight: 500,
+};
+const addCardPlus = {
+  width: 28, height: 28, borderRadius: 8,
+  background: 'var(--accent-soft)', color: 'var(--accent)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  fontSize: 20, fontWeight: 600,
+};
+const cardWrap = {
+  background: 'var(--surface)', border: '1px solid var(--border)',
+  borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)',
+};
+const cardMain = {
+  display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+  padding: 14, background: 'transparent', color: 'var(--text)',
+};
+const cardActions = {
+  display: 'flex', gap: 1, padding: '0 14px 14px',
+};
+const editAction = {
+  flex: 1, padding: '10px 14px', borderRadius: 8,
+  background: 'var(--surface-alt)', color: 'var(--text-muted)',
+  border: '1px solid var(--border)', fontSize: 13, fontWeight: 500,
+  marginRight: 8,
+};
+const removeAction = {
+  width: 38, padding: 10, borderRadius: 8,
+  background: 'var(--surface-alt)', color: 'var(--danger)',
+  border: '1px solid var(--border)', fontSize: 18, lineHeight: 1,
+};
+const lbl = {
+  display: 'block', fontSize: 13, color: 'var(--text-muted)',
+  marginTop: 14, marginBottom: 6, fontWeight: 500,
+};
+const presetBtn = (active) => ({
+  display: 'flex', alignItems: 'center', gap: 12, padding: 14,
+  borderRadius: 12, textAlign: 'left',
+  background: active ? 'var(--accent-soft)' : 'var(--surface)',
+  border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+  color: 'var(--text)', transition: 'all 120ms',
+});
+const ghostBtn = {
+  padding: '6px 10px', borderRadius: 8, fontSize: 13,
+  color: 'var(--text-muted)', background: 'transparent',
+  border: '1px solid var(--border)',
 };
 const btnPrimary = {
-  padding: '10px 16px', borderRadius: 8, background: '#6cf',
-  border: 0, cursor: 'pointer', fontWeight: 600, color: '#001',
+  padding: '12px 18px', borderRadius: 10,
+  background: 'var(--accent)', color: 'var(--accent-text)',
+  fontWeight: 600, fontSize: 15,
 };
-const lblStyle = { fontSize: 13, opacity: 0.6, marginTop: 8 };
-const btnOpen = {
-  padding: '6px 12px', borderRadius: 8, background: '#6cf',
-  border: 0, cursor: 'pointer', color: '#001', fontWeight: 600, fontSize: 13,
-};
-const btnEdit = {
-  padding: '6px 12px', borderRadius: 8, background: 'transparent',
-  border: '1px solid #6cf', color: '#6cf', cursor: 'pointer', fontWeight: 600, fontSize: 13,
-};
-const selectStyle = {
-  padding: '6px 10px', borderRadius: 8, background: '#0a0a14',
-  border: '1px solid #333', color: '#fff', fontSize: 13, cursor: 'pointer',
-};
-const btnDanger = {
-  padding: '6px 12px', borderRadius: 8, background: 'transparent',
-  border: '1px solid #f66', color: '#f66', cursor: 'pointer', fontSize: 16, lineHeight: 1,
+const errBox = {
+  color: 'var(--danger)', fontSize: 14, marginTop: 14,
+  padding: '8px 12px', background: 'rgba(220,38,38,0.06)',
+  borderRadius: 8, border: '1px solid rgba(220,38,38,0.2)',
 };

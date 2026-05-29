@@ -7,15 +7,18 @@ import IosInstallHint from './IosInstallHint.jsx';
 import AppRuntime from './AppRuntime.jsx';
 import AppBuilder from './AppBuilder.jsx';
 
-// URL модель:
-//   /                       — дашборд владельца
-//   /app/<slug>             — клиентское приложение (рантайм блоков)
-//   /app/<slug>/edit        — конструктор владельца
-
 function parseUrl() {
   const m = window.location.pathname.match(/^\/app\/([a-z0-9-]+)(?:\/(edit))?\/?$/i);
   if (!m) return { slug: null, mode: 'home' };
   return { slug: m[1].toLowerCase(), mode: m[2] === 'edit' ? 'edit' : 'view' };
+}
+
+// hex → rgba for accent-soft mixing
+function softColor(hex, alpha = 0.08) {
+  const m = /^#?([\da-f]{6})$/i.exec(hex);
+  if (!m) return `rgba(37, 99, 235, ${alpha})`;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 }
 
 export default function App({ sa }) {
@@ -48,18 +51,24 @@ export default function App({ sa }) {
       .catch((e) => setTenantError(String(e).includes('404') ? 'Бизнес не найден' : 'Ошибка загрузки'));
   }, [route.slug, user, sa]);
 
-  // Подмена PWA-манифеста под открытый бизнес.
+  // Брендинг: PWA-манифест, title, theme-color и --accent под цвет бизнеса.
   useEffect(() => {
     const link = document.querySelector('link[rel="manifest"]');
     const themeMeta = document.querySelector('meta[name="theme-color"]');
-    if (route.slug && tenant && link) {
-      link.setAttribute('href', sa.tenants.manifestUrl(route.slug));
+    const root = document.documentElement;
+    if (route.slug && tenant) {
+      if (link) link.setAttribute('href', sa.tenants.manifestUrl(route.slug));
       document.title = tenant.name;
-      if (themeMeta) themeMeta.setAttribute('content', tenant.color || '#0a0a14');
-    } else if (link) {
-      link.setAttribute('href', '/manifest.webmanifest');
+      const color = tenant.color || '#2563eb';
+      if (themeMeta) themeMeta.setAttribute('content', color);
+      root.style.setProperty('--accent', color);
+      root.style.setProperty('--accent-soft', softColor(color, 0.10));
+    } else {
+      if (link) link.setAttribute('href', '/manifest.webmanifest');
       document.title = 'Start-Apps';
-      if (themeMeta) themeMeta.setAttribute('content', '#0a0a14');
+      if (themeMeta) themeMeta.setAttribute('content', '#fafaf7');
+      root.style.setProperty('--accent', '#2563eb');
+      root.style.setProperty('--accent-soft', softColor('#2563eb', 0.10));
     }
   }, [route.slug, tenant, sa]);
 
@@ -84,42 +93,45 @@ export default function App({ sa }) {
   const shareUrl = route.slug ? `${window.location.origin}/app/${route.slug}` : null;
   const isOwner = !!(user && tenant && tenant.owner_login === user.login);
 
-  if (!ready) return <div style={{ padding: 24 }}>Загрузка…</div>;
+  if (!ready) return <div className="sa-container"><p className="sa-muted">Загрузка…</p></div>;
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#0a0a14', color: '#fff' }}>
+    <div>
       <IosInstallHint />
       <header style={hdr}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <strong style={{ cursor: 'pointer' }} onClick={goHome}>Start-Apps</strong>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <button onClick={goHome} style={brandBtn}>
+            <span style={brandDot} />
+            <span style={{ fontWeight: 600 }}>Start-Apps</span>
+          </button>
           {tenant && (
             <>
-              <span style={{ opacity: 0.4 }}>›</span>
-              <span>{tenant.name}</span>
-              {isOwner && route.mode === 'view' && (
-                <button onClick={() => editTenant(route.slug)} style={btnLink}>✏ редактировать</button>
-              )}
-              {isOwner && route.mode === 'edit' && (
-                <button onClick={() => openTenant(route.slug)} style={btnLink}>👁 просмотр</button>
-              )}
-              {user && route.mode === 'view' && <ShareButton title={tenant.name} url={shareUrl} />}
+              <span style={crumb}>/</span>
+              <span style={{ fontWeight: 500, color: 'var(--text)' }}>{tenant.name}</span>
             </>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {tenant && isOwner && route.mode === 'view' && (
+            <button onClick={() => editTenant(route.slug)} style={editBtn}>✏ редактировать</button>
+          )}
+          {tenant && isOwner && route.mode === 'edit' && (
+            <button onClick={() => openTenant(route.slug)} style={editBtn}>👁 просмотр</button>
+          )}
+          {tenant && user && route.mode === 'view' && <ShareButton title={tenant.name} url={shareUrl} />}
           {user ? (
             <>
-              <span style={{ opacity: 0.7 }}>{user.login}</span>
-              <button onClick={logout} style={btnDanger}>выйти</button>
+              <span className="sa-muted" style={{ fontSize: 14 }}>{user.login}</span>
+              <button onClick={logout} style={logoutBtn} title="выйти">↪</button>
             </>
           ) : (
-            <span style={{ opacity: 0.6 }}>гость</span>
+            <span className="sa-subtle" style={{ fontSize: 14 }}>гость</span>
           )}
           <InstallButton />
         </div>
       </header>
 
-      <main style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
+      <main className="sa-container sa-appear">
         {!user ? (
           <>
             {route.slug && (
@@ -131,7 +143,7 @@ export default function App({ sa }) {
           </>
         ) : route.slug ? (
           tenantError ? (
-            <p style={{ opacity: 0.6 }}>
+            <p className="sa-muted">
               {tenantError}. <button onClick={goHome} style={linkBtn}>← к моим бизнесам</button>
             </p>
           ) : tenant ? (
@@ -139,7 +151,7 @@ export default function App({ sa }) {
               ? <AppBuilder sa={scopedSa} tenant={tenant} onClose={() => openTenant(route.slug)} />
               : <AppRuntime sa={scopedSa} tenant={tenant} isOwner={isOwner} />
           ) : (
-            <p style={{ opacity: 0.6 }}>загрузка бизнеса…</p>
+            <p className="sa-muted">загрузка бизнеса…</p>
           )
         ) : (
           <MyTenants sa={sa} onOpen={openTenant} onEdit={editTenant} user={user} />
@@ -150,23 +162,41 @@ export default function App({ sa }) {
 }
 
 const hdr = {
-  padding: '12px 20px', borderBottom: '1px solid #222',
+  position: 'sticky', top: 0, zIndex: 50,
+  padding: '12px 20px',
+  background: 'rgba(250, 250, 247, 0.85)',
+  backdropFilter: 'saturate(180%) blur(10px)',
+  borderBottom: '1px solid var(--border)',
   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
   gap: 12, flexWrap: 'wrap',
 };
-const btnDanger = {
-  background: 'transparent', color: '#f66', border: '1px solid #f66',
-  padding: '4px 10px', borderRadius: 8, cursor: 'pointer',
+const brandBtn = {
+  display: 'inline-flex', alignItems: 'center', gap: 8,
+  padding: '4px 6px', borderRadius: 8, cursor: 'pointer',
+  color: 'var(--text)', background: 'transparent',
 };
-const btnLink = {
-  background: 'transparent', color: '#6cf', border: '1px solid #6cf',
-  padding: '4px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 13,
+const brandDot = {
+  width: 18, height: 18, borderRadius: 5,
+  background: 'linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent) 50%, white))',
+  boxShadow: 'var(--shadow-sm)',
+};
+const crumb = { color: 'var(--text-subtle)' };
+const editBtn = {
+  padding: '6px 12px', borderRadius: 8,
+  background: 'transparent', color: 'var(--accent)',
+  border: '1px solid var(--border-strong)', fontSize: 13, fontWeight: 500,
+};
+const logoutBtn = {
+  width: 32, height: 32, borderRadius: 8, fontSize: 16,
+  color: 'var(--text-muted)', background: 'transparent',
+  border: '1px solid var(--border)',
 };
 const linkBtn = {
-  color: '#6cf', background: 'transparent', border: 0,
-  cursor: 'pointer', textDecoration: 'underline',
+  color: 'var(--accent)', background: 'transparent', border: 0,
+  cursor: 'pointer', textDecoration: 'underline', font: 'inherit',
 };
 const hint = {
-  background: '#1a1a2a', padding: 12, borderRadius: 8,
-  marginBottom: 16, fontSize: 14, opacity: 0.9,
+  background: 'var(--accent-soft)', padding: '12px 16px',
+  borderRadius: 10, marginBottom: 16, fontSize: 14,
+  border: '1px solid var(--border)',
 };

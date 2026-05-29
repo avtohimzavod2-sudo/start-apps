@@ -1,60 +1,101 @@
-// Общие стили блоков — чтобы блоки выглядели единообразно
-// и не приходилось копипастить css в каждый компонент.
+// Стилевые токены и общие хелперы блоков. Светлая премиум-палитра.
+// CSS-переменные (см. index.css) — единый источник правды для цветов.
+
+const t = (n) => `var(--${n})`;
 
 export const ui = {
-  section: { marginBottom: 24 },
-  h2: { marginTop: 0, marginBottom: 12, fontSize: 20 },
-  muted: { opacity: 0.55 },
+  // Карточка/секция
+  section: { marginBottom: 28 },
+  h2: { marginTop: 0, marginBottom: 12 },
+  muted: { color: t('text-muted') },
+
+  // Строки/карточки
+  card: {
+    background: t('surface'), border: `1px solid ${t('border')}`,
+    borderRadius: t('radius'), padding: 20, boxShadow: t('shadow-sm'),
+  },
   row: {
     display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 12,
-    alignItems: 'center', padding: '10px 12px', background: '#111', borderRadius: 8,
+    alignItems: 'center', padding: '12px 14px',
+    background: t('surface'), border: `1px solid ${t('border')}`,
+    borderRadius: t('radius-sm'),
   },
-  card: { background: '#111', borderRadius: 12, padding: 16 },
+
+  // Кнопки
   primary: {
-    padding: '10px 16px', borderRadius: 8, background: '#6cf',
-    border: 0, cursor: 'pointer', color: '#001', fontWeight: 600, fontSize: 14,
+    padding: '12px 18px', borderRadius: t('radius-sm'),
+    background: t('accent'), color: t('accent-text'),
+    fontWeight: 600, fontSize: 14, lineHeight: 1,
+    transition: 'transform 80ms ease, filter 120ms ease',
+  },
+  secondary: {
+    padding: '10px 16px', borderRadius: t('radius-sm'),
+    background: t('surface'), color: t('accent'),
+    border: `1px solid ${t('border-strong')}`,
+    fontWeight: 500, fontSize: 14,
   },
   ghost: {
-    padding: '8px 12px', borderRadius: 8, background: 'transparent',
-    border: '1px solid #333', cursor: 'pointer', color: '#fff', fontSize: 13,
+    padding: '8px 12px', borderRadius: t('radius-sm'),
+    background: 'transparent', color: t('text-muted'),
+    border: `1px solid ${t('border')}`,
+    fontSize: 13,
   },
   danger: {
-    padding: '6px 12px', borderRadius: 8, background: 'transparent',
-    border: '1px solid #f66', color: '#f66', cursor: 'pointer', fontSize: 13,
+    padding: '8px 14px', borderRadius: t('radius-sm'),
+    background: 'transparent', color: t('danger'),
+    border: `1px solid ${t('border')}`,
+    fontSize: 13,
   },
+
+  // Формы
   input: {
-    padding: 10, borderRadius: 8, border: '1px solid #333',
-    background: '#0a0a14', color: '#fff', fontSize: 14, width: '100%', boxSizing: 'border-box',
+    padding: '10px 12px', borderRadius: t('radius-sm'),
+    border: `1px solid ${t('border')}`,
+    background: t('surface'), color: t('text'),
+    fontSize: 15, width: '100%', boxSizing: 'border-box',
   },
-  lbl: { display: 'block', fontSize: 13, opacity: 0.6, marginTop: 8, marginBottom: 4 },
+  lbl: {
+    display: 'block', fontSize: 13, color: t('text-muted'),
+    marginTop: 10, marginBottom: 6, fontWeight: 500,
+  },
+
+  // Слоты времени / даты / выбор
   pill: (active) => ({
-    padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
-    border: `1px solid ${active ? '#6cf' : '#333'}`,
-    background: active ? '#6cf' : 'transparent',
-    color: active ? '#001' : '#fff', fontSize: 13,
+    padding: '8px 14px', borderRadius: 999, fontSize: 13, fontWeight: 500,
+    border: `1px solid ${active ? t('accent') : t('border-strong')}`,
+    background: active ? t('accent') : t('surface'),
+    color: active ? t('accent-text') : t('text'),
+    transition: 'all 120ms ease',
   }),
   slot: (active, isTaken) => ({
-    padding: '8px 12px', borderRadius: 8,
+    padding: '10px 12px', borderRadius: t('radius-sm'),
     cursor: isTaken ? 'not-allowed' : 'pointer',
-    border: `1px solid ${active ? '#6cf' : isTaken ? '#222' : '#333'}`,
-    background: active ? '#6cf' : isTaken ? '#1a1a1a' : 'transparent',
-    color: active ? '#001' : isTaken ? '#555' : '#fff',
-    fontSize: 13,
+    border: `1px solid ${active ? t('accent') : t('border')}`,
+    background: active ? t('accent') : isTaken ? t('surface-alt') : t('surface'),
+    color: active ? t('accent-text') : isTaken ? t('text-subtle') : t('text'),
+    fontSize: 13, fontWeight: 500,
     textDecoration: isTaken ? 'line-through' : 'none',
   }),
+
+  // Карточка-выбор (услуга и т.п.)
   pickRow: (active) => ({
-    display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 12,
-    alignItems: 'center', padding: '10px 12px', borderRadius: 8,
-    background: active ? '#1a2a3a' : '#111',
-    border: `1px solid ${active ? '#6cf' : '#222'}`,
-    color: '#fff', cursor: 'pointer', textAlign: 'left',
+    display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 14,
+    alignItems: 'center', padding: '14px 16px',
+    borderRadius: t('radius'),
+    background: active ? `var(--accent-soft)` : t('surface'),
+    border: `1px solid ${active ? t('accent') : t('border')}`,
+    color: t('text'), cursor: 'pointer', textAlign: 'left',
+    transition: 'all 120ms ease',
   }),
+
+  // Чат-бабл
   bubble: (role) => ({
     alignSelf: role === 'user' ? 'flex-end' : 'flex-start',
-    background: role === 'user' ? '#6cf' : '#222',
-    color: role === 'user' ? '#001' : '#fff',
-    padding: '8px 12px', borderRadius: 12, maxWidth: '80%',
-    whiteSpace: 'pre-wrap', fontSize: 14,
+    background: role === 'user' ? t('accent') : t('surface-alt'),
+    color: role === 'user' ? t('accent-text') : t('text'),
+    padding: '10px 14px', borderRadius: 14, maxWidth: '85%',
+    whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.4,
+    border: role === 'user' ? 'none' : `1px solid ${t('border')}`,
   }),
 };
 
@@ -65,7 +106,6 @@ export function todayPlus(days) {
 }
 
 export function computeStatusBishkek(scheduleObj) {
-  // schedule = { mon_sat: "HH:MM-HH:MM", sun: "closed"|"HH:MM-HH:MM", slot_min, raw? }
   if (!scheduleObj || typeof scheduleObj !== 'object') return { open: false, hours: '' };
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Bishkek',
@@ -97,4 +137,12 @@ export function generateTimes(scheduleObj) {
     out.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`);
   }
   return out;
+}
+
+// Форматирует дату YYYY-MM-DD как "29 мая, чт"
+export function prettyDate(iso) {
+  try {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', weekday: 'short' });
+  } catch { return iso; }
 }
