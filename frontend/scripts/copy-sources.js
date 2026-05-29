@@ -1,6 +1,7 @@
-// На Windows dev `_sdk`/`_templates` — junction'ы (mklink /J).
-// В CI/Render таких junction'ов нет, vite не найдёт алиасы.
-// Этот скрипт перед билдом превращает их в реальные копии.
+// На Windows dev `_sdk` — junction (mklink /J).
+// В CI/Render таких junction'ов нет, vite не найдёт алиас.
+// Этот скрипт перед билдом превращает её в реальную копию.
+// (Папка templates/ больше не используется — блоки переехали в frontend/src/blocks/.)
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -10,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendDir = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(frontendDir, '..');
 
-for (const name of ['sdk', 'templates']) {
+for (const name of ['sdk']) {
   const src = path.join(repoRoot, name);
   const dst = path.join(frontendDir, '_' + name);
   if (!fs.existsSync(src)) {
@@ -19,7 +20,6 @@ for (const name of ['sdk', 'templates']) {
   }
   const stat = fs.lstatSync(dst, { throwIfNoEntry: false });
   if (stat && stat.isSymbolicLink()) {
-    // junction на Windows — оставляем
     console.log(`copy-sources: keep junction _${name}`);
     continue;
   }

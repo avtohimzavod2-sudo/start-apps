@@ -10,7 +10,6 @@ export default defineConfig({
     preserveSymlinks: true,
     alias: {
       '@sdk': resolve(__dirname, '_sdk'),
-      '@templates': resolve(__dirname, '_templates'),
     },
   },
   server: {
