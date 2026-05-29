@@ -149,30 +149,70 @@ export default function MyTenants({ sa, onOpen }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {list.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => onOpen(t.slug)}
-              style={cardStyle}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 48, height: 48, borderRadius: 10, background: t.color || '#6cf',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 26, flexShrink: 0,
-                }}>{t.icon_emoji || '✨'}</div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong>{t.name}</strong>
-                    <span style={{ opacity: 0.5, fontSize: 13 }}>/{t.slug}</span>
-                  </div>
-                  <small style={{ opacity: 0.5 }}>создан {new Date(t.created_at).toLocaleDateString()}</small>
-                </div>
-              </div>
-            </button>
+            <TenantCard key={t.id} t={t} onOpen={onOpen} onChanged={reload} sa={sa} />
           ))}
         </div>
       )}
     </section>
+  );
+}
+
+function TenantCard({ t, onOpen, onChanged, sa }) {
+  const [busy, setBusy] = useState(false);
+  const currentTpl = TEMPLATES.find((x) => x.id === t.template_id);
+
+  async function changeTemplate(newId) {
+    if (newId === t.template_id) return;
+    setBusy(true);
+    try {
+      await sa.tenants.update(t.slug, { template_id: newId });
+      await onChanged();
+    } finally { setBusy(false); }
+  }
+
+  async function remove() {
+    if (!confirm(`Удалить бизнес «${t.name}» и все его данные? Отменить нельзя.`)) return;
+    setBusy(true);
+    try {
+      await sa.tenants.delete(t.slug);
+      await onChanged();
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div style={{ background: '#111', border: '1px solid #222', borderRadius: 10, padding: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{
+          width: 48, height: 48, borderRadius: 10, background: t.color || '#6cf',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 26, flexShrink: 0,
+        }}>{t.icon_emoji || '✨'}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            <strong style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</strong>
+            <span style={{ opacity: 0.5, fontSize: 13 }}>/{t.slug}</span>
+          </div>
+          <small style={{ opacity: 0.5 }}>
+            тип: {currentTpl?.name || t.template_id} · создан {new Date(t.created_at).toLocaleDateString()}
+          </small>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+        <button onClick={() => onOpen(t.slug)} disabled={busy} style={btnOpen}>открыть →</button>
+        <select
+          value={t.template_id}
+          onChange={(e) => changeTemplate(e.target.value)}
+          disabled={busy}
+          style={selectStyle}
+          title="сменить тип приложения"
+        >
+          {TEMPLATES.map((tpl) => (
+            <option key={tpl.id} value={tpl.id}>{tpl.icon} {tpl.name}</option>
+          ))}
+        </select>
+        <button onClick={remove} disabled={busy} style={btnDanger} title="удалить бизнес">×</button>
+      </div>
+    </div>
   );
 }
 
@@ -186,9 +226,17 @@ const btnPrimary = {
   border: 0, cursor: 'pointer', fontWeight: 600, color: '#001',
 };
 
-const cardStyle = {
-  textAlign: 'left', background: '#111', border: '1px solid #222',
-  borderRadius: 10, padding: 14, cursor: 'pointer', color: '#fff',
-};
-
 const lblStyle = { fontSize: 13, opacity: 0.6, marginTop: 8 };
+
+const btnOpen = {
+  flex: 1, padding: '6px 12px', borderRadius: 8, background: '#6cf',
+  border: 0, cursor: 'pointer', color: '#001', fontWeight: 600, fontSize: 13,
+};
+const selectStyle = {
+  padding: '6px 10px', borderRadius: 8, background: '#0a0a14',
+  border: '1px solid #333', color: '#fff', fontSize: 13, cursor: 'pointer',
+};
+const btnDanger = {
+  padding: '6px 12px', borderRadius: 8, background: 'transparent',
+  border: '1px solid #f66', color: '#f66', cursor: 'pointer', fontSize: 16, lineHeight: 1,
+};

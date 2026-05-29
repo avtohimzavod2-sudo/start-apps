@@ -29,6 +29,7 @@ class UpdateTenant(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=80)
     color: str | None = None
     icon_emoji: str | None = Field(default=None, max_length=8)
+    template_id: str | None = None
 
 
 class UpdateConfig(BaseModel):
@@ -107,9 +108,27 @@ def update(slug: str, req: UpdateTenant, login: str = Depends(current_user), db:
         t.color = _normalize_color(req.color)
     if req.icon_emoji is not None:
         t.icon_emoji = req.icon_emoji.strip() or t.icon_emoji
+    if req.template_id is not None:
+        if req.template_id not in ALLOWED_TEMPLATES:
+            raise HTTPException(400, f"unknown template_id (allowed: {sorted(ALLOWED_TEMPLATES)})")
+        t.template_id = req.template_id
     db.commit()
     db.refresh(t)
     return _serialize(t)
+
+
+@router.delete("/{slug}")
+def delete(slug: str, login: str = Depends(current_user), db: Session = Depends(get_session)):
+    """Удаление тенанта вместе со всеми его данными.
+    ondelete=CASCADE на FK в tenant_kv и bookings почистит дочерние строки."""
+    t = db.query(Tenant).filter(Tenant.slug == slug.lower()).first()
+    if not t:
+        raise HTTPException(404, "tenant not found")
+    if t.owner_login != login:
+        raise HTTPException(403, "only owner can delete")
+    db.delete(t)
+    db.commit()
+    return {"ok": True, "deleted": slug}
 
 
 @router.get("/{slug}/config")

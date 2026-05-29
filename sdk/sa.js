@@ -88,6 +88,9 @@ export function createSa({ api, fetchImpl = fetch } = {}) {
     async update(slug, patch) {
       return call(`/sa/tenants/${encodeURIComponent(slug)}`, { method: 'PATCH', body: patch });
     },
+    async delete(slug) {
+      return call(`/sa/tenants/${encodeURIComponent(slug)}`, { method: 'DELETE' });
+    },
     async get(slug) {
       return call(`/sa/tenants/${encodeURIComponent(slug)}`);
     },

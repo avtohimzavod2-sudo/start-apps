@@ -137,7 +137,7 @@ function Booking({ sa, config, reloadMine, setView }) {
       if (!cancelled) setTaken(new Set(arr));
     });
     return () => { cancelled = true; };
-  }, [sa, date, done]);
+  }, [sa, date]);
 
   async function confirm() {
     if (!service || busy || taken.has(time)) return;
@@ -419,12 +419,16 @@ function todayPlus(days) {
 }
 
 function computeStatus(scheduleStr) {
-  // Очень простая логика: ищем диапазон часов HH:MM-HH:MM в строке.
-  // Если нет — считаем закрытым.
+  // Ищем диапазон часов HH:MM-HH:MM. Время считаем в часовом поясе Бишкека —
+  // клиент может открыть из другого пояса, статус должен быть от бизнеса.
   const m = String(scheduleStr).match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
   if (!m) return { open: false };
-  const now = new Date();
-  const cur = now.getHours() * 60 + now.getMinutes();
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Bishkek', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date());
+  const hh = Number(parts.find((p) => p.type === 'hour')?.value || 0);
+  const mm = Number(parts.find((p) => p.type === 'minute')?.value || 0);
+  const cur = hh * 60 + mm;
   const from = Number(m[1]) * 60 + Number(m[2]);
   const to = Number(m[3]) * 60 + Number(m[4]);
   return { open: cur >= from && cur < to };
