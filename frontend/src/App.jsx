@@ -4,23 +4,24 @@ import ShareButton from './ShareButton.jsx';
 import AuthForm from './AuthForm.jsx';
 import MyTenants from './MyTenants.jsx';
 import IosInstallHint from './IosInstallHint.jsx';
-import { byId as templateById } from './templates.js';
+import AppRuntime from './AppRuntime.jsx';
+import AppBuilder from './AppBuilder.jsx';
 
 // URL модель:
-//   /                    — дашборд владельца (список бизнесов + создание)
-//   /app/<slug>          — клиентское приложение бизнеса <slug>
-// Каждый бизнес — изолированное пространство данных. Клиенты регистрируются
-// один раз на платформе, но их данные привязаны к конкретному бизнесу.
+//   /                       — дашборд владельца
+//   /app/<slug>             — клиентское приложение (рантайм блоков)
+//   /app/<slug>/edit        — конструктор владельца
 
-function slugFromUrl() {
-  const m = window.location.pathname.match(/^\/app\/([a-z0-9-]+)\/?$/i);
-  return m ? m[1].toLowerCase() : null;
+function parseUrl() {
+  const m = window.location.pathname.match(/^\/app\/([a-z0-9-]+)(?:\/(edit))?\/?$/i);
+  if (!m) return { slug: null, mode: 'home' };
+  return { slug: m[1].toLowerCase(), mode: m[2] === 'edit' ? 'edit' : 'view' };
 }
 
 export default function App({ sa }) {
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState(null);
-  const [slug, setSlug] = useState(slugFromUrl());
+  const [route, setRoute] = useState(parseUrl());
   const [tenant, setTenant] = useState(null);
   const [tenantError, setTenantError] = useState(null);
 
@@ -34,27 +35,25 @@ export default function App({ sa }) {
   }, [sa]);
 
   useEffect(() => {
-    const onPop = () => setSlug(slugFromUrl());
+    const onPop = () => setRoute(parseUrl());
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  // Подгружаем инфо о тенанте когда меняется slug или появляется юзер.
   useEffect(() => {
-    if (!slug || !user) { setTenant(null); setTenantError(null); return; }
+    if (!route.slug || !user) { setTenant(null); setTenantError(null); return; }
     setTenantError(null);
-    sa.tenants.get(slug)
+    sa.tenants.get(route.slug)
       .then(setTenant)
       .catch((e) => setTenantError(String(e).includes('404') ? 'Бизнес не найден' : 'Ошибка загрузки'));
-  }, [slug, user, sa]);
+  }, [route.slug, user, sa]);
 
-  // Подмена PWA-манифеста и theme-color под открытый бизнес.
-  // Установленная иконка получит имя/цвет/эмодзи конкретного tenant'а.
+  // Подмена PWA-манифеста под открытый бизнес.
   useEffect(() => {
     const link = document.querySelector('link[rel="manifest"]');
     const themeMeta = document.querySelector('meta[name="theme-color"]');
-    if (slug && tenant && link) {
-      link.setAttribute('href', sa.tenants.manifestUrl(slug));
+    if (route.slug && tenant && link) {
+      link.setAttribute('href', sa.tenants.manifestUrl(route.slug));
       document.title = tenant.name;
       if (themeMeta) themeMeta.setAttribute('content', tenant.color || '#0a0a14');
     } else if (link) {
@@ -62,25 +61,28 @@ export default function App({ sa }) {
       document.title = 'Start-Apps';
       if (themeMeta) themeMeta.setAttribute('content', '#0a0a14');
     }
-  }, [slug, tenant, sa]);
+  }, [route.slug, tenant, sa]);
 
-  function openTenant(s) {
-    window.history.pushState({}, '', `/app/${s}`);
-    setSlug(s);
+  function openTenant(slug) {
+    window.history.pushState({}, '', `/app/${slug}`);
+    setRoute({ slug, mode: 'view' });
   }
-
+  function editTenant(slug) {
+    window.history.pushState({}, '', `/app/${slug}/edit`);
+    setRoute({ slug, mode: 'edit' });
+  }
   function goHome() {
     window.history.pushState({}, '', '/');
-    setSlug(null);
+    setRoute({ slug: null, mode: 'home' });
   }
-
   function logout() {
     sa.auth.logout();
     setUser(null);
   }
 
-  const scopedSa = useMemo(() => (slug ? sa.withTenant(slug) : sa), [sa, slug]);
-  const shareUrl = slug ? `${window.location.origin}/app/${slug}` : null;
+  const scopedSa = useMemo(() => (route.slug ? sa.withTenant(route.slug) : sa), [sa, route.slug]);
+  const shareUrl = route.slug ? `${window.location.origin}/app/${route.slug}` : null;
+  const isOwner = !!(user && tenant && tenant.owner_login === user.login);
 
   if (!ready) return <div style={{ padding: 24 }}>Загрузка…</div>;
 
@@ -94,9 +96,13 @@ export default function App({ sa }) {
             <>
               <span style={{ opacity: 0.4 }}>›</span>
               <span>{tenant.name}</span>
-              {user && tenant.owner_login === user.login && (
-                <ShareButton title={tenant.name} url={shareUrl} />
+              {isOwner && route.mode === 'view' && (
+                <button onClick={() => editTenant(route.slug)} style={btnLink}>✏ редактировать</button>
               )}
+              {isOwner && route.mode === 'edit' && (
+                <button onClick={() => openTenant(route.slug)} style={btnLink}>👁 просмотр</button>
+              )}
+              {user && route.mode === 'view' && <ShareButton title={tenant.name} url={shareUrl} />}
             </>
           )}
         </div>
@@ -116,31 +122,27 @@ export default function App({ sa }) {
       <main style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
         {!user ? (
           <>
-            {slug && (
+            {route.slug && (
               <div style={hint}>
-                Это страница бизнеса <code>/{slug}</code>. Зарегистрируйся или войди — твои данные привяжутся к этому бизнесу.
+                Это страница бизнеса <code>/{route.slug}</code>. Зарегистрируйся или войди — твои данные привяжутся к этому бизнесу.
               </div>
             )}
             <AuthForm sa={sa} onAuth={setUser} />
           </>
-        ) : slug ? (
+        ) : route.slug ? (
           tenantError ? (
             <p style={{ opacity: 0.6 }}>
               {tenantError}. <button onClick={goHome} style={linkBtn}>← к моим бизнесам</button>
             </p>
           ) : tenant ? (
-            (() => {
-              const tpl = templateById(tenant.template_id);
-              if (!tpl) return <p style={{ opacity: 0.6 }}>Шаблон <code>{tenant.template_id}</code> не найден.</p>;
-              const Tpl = tpl.component;
-              const isOwner = user.login === tenant.owner_login;
-              return <Tpl sa={scopedSa} tenant={tenant} user={user} isOwner={isOwner} />;
-            })()
+            route.mode === 'edit' && isOwner
+              ? <AppBuilder sa={scopedSa} tenant={tenant} onClose={() => openTenant(route.slug)} />
+              : <AppRuntime sa={scopedSa} tenant={tenant} isOwner={isOwner} />
           ) : (
             <p style={{ opacity: 0.6 }}>загрузка бизнеса…</p>
           )
         ) : (
-          <MyTenants sa={sa} onOpen={openTenant} />
+          <MyTenants sa={sa} onOpen={openTenant} onEdit={editTenant} user={user} />
         )}
       </main>
     </div>
@@ -155,6 +157,10 @@ const hdr = {
 const btnDanger = {
   background: 'transparent', color: '#f66', border: '1px solid #f66',
   padding: '4px 10px', borderRadius: 8, cursor: 'pointer',
+};
+const btnLink = {
+  background: 'transparent', color: '#6cf', border: '1px solid #6cf',
+  padding: '4px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 13,
 };
 const linkBtn = {
   color: '#6cf', background: 'transparent', border: 0,

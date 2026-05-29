@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from ..config_schema import ConfigError, normalize, normalize_and_validate, preset_for
 from ..db import Booking, Tenant, get_session
 from .auth import current_user
 
@@ -66,14 +67,21 @@ def create(req: CreateTenant, login: str = Depends(current_user), db: Session = 
         raise HTTPException(400, f"unknown template_id (allowed: {sorted(ALLOWED_TEMPLATES)})")
     if db.query(Tenant).filter(Tenant.slug == slug).first():
         raise HTTPException(409, "slug already taken")
+    name = req.name.strip()
+    color = _normalize_color(req.color or "#6cf")
+    emoji = (req.icon_emoji or "✨").strip() or "✨"
+    # Создаём с дефолтным конфигом (пресет) + любыми кастомными полями владельца.
+    # Нормализатор достроит business/data/blocks под единую схему.
+    base_config = req.config or {}
+    if "blocks" not in (base_config or {}):
+        # Пресет по template_id + business поля из tenant-фасада
+        base_config = {**base_config, "blocks": preset_for(req.template_id)}
+    config = normalize(base_config, req.template_id, name, color, emoji)
+
     t = Tenant(
-        slug=slug,
-        name=req.name.strip(),
-        owner_login=login,
-        color=_normalize_color(req.color or "#6cf"),
-        icon_emoji=(req.icon_emoji or "✨").strip() or "✨",
-        template_id=req.template_id,
-        config=req.config or {},
+        slug=slug, name=name, owner_login=login,
+        color=color, icon_emoji=emoji,
+        template_id=req.template_id, config=config,
     )
     db.add(t)
     db.commit()
@@ -136,7 +144,9 @@ def get_config(slug: str, _: str = Depends(current_user), db: Session = Depends(
     t = db.query(Tenant).filter(Tenant.slug == slug.lower()).first()
     if not t:
         raise HTTPException(404, "tenant not found")
-    return {"config": t.config or {}}
+    # Lazy-нормализация на чтение: старые тенанты не сломаются.
+    config = normalize(t.config or {}, t.template_id, t.name, t.color, t.icon_emoji)
+    return {"config": config}
 
 
 @router.patch("/{slug}/config")
@@ -146,9 +156,22 @@ def patch_config(slug: str, req: UpdateConfig, login: str = Depends(current_user
         raise HTTPException(404, "tenant not found")
     if t.owner_login != login:
         raise HTTPException(403, "only owner can edit config")
-    t.config = req.config or {}
+    try:
+        config = normalize_and_validate(req.config or {}, t.template_id, t.name, t.color, t.icon_emoji)
+    except ConfigError as e:
+        raise HTTPException(400, str(e))
+    # Синхронизируем брендинг-фасад tenant'а с config.business (для манифеста/листинга).
+    biz = config.get("business") or {}
+    if biz.get("name"):
+        t.name = biz["name"]
+    if biz.get("color"):
+        try: t.color = _normalize_color(biz["color"])
+        except HTTPException: pass
+    if biz.get("emoji"):
+        t.icon_emoji = biz["emoji"]
+    t.config = config
     db.commit()
-    return {"config": t.config}
+    return {"config": config}
 
 
 @router.get("/{slug}/appointments")
