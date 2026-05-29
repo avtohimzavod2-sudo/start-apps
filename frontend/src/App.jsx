@@ -4,7 +4,7 @@ import ShareButton from './ShareButton.jsx';
 import AuthForm from './AuthForm.jsx';
 import MyTenants from './MyTenants.jsx';
 import IosInstallHint from './IosInstallHint.jsx';
-import MoodJournal from '@templates/mood-journal/index.jsx';
+import { byId as templateById } from './templates.js';
 
 // URL модель:
 //   /                    — дашборд владельца (список бизнесов + создание)
@@ -129,7 +129,13 @@ export default function App({ sa }) {
               {tenantError}. <button onClick={goHome} style={linkBtn}>← к моим бизнесам</button>
             </p>
           ) : tenant ? (
-            <MoodJournal sa={scopedSa} />
+            (() => {
+              const tpl = templateById(tenant.template_id);
+              if (!tpl) return <p style={{ opacity: 0.6 }}>Шаблон <code>{tenant.template_id}</code> не найден.</p>;
+              const Tpl = tpl.component;
+              const isOwner = user.login === tenant.owner_login;
+              return <Tpl sa={scopedSa} tenant={tenant} user={user} isOwner={isOwner} />;
+            })()
           ) : (
             <p style={{ opacity: 0.6 }}>загрузка бизнеса…</p>
           )

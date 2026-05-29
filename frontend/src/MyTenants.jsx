@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { TEMPLATES } from './templates.js';
 
 // Дашборд владельца: список бизнесов которые он создал + форма создания.
 // Каждый «бизнес» — это tenant со своим пространством данных.
@@ -12,6 +13,7 @@ export default function MyTenants({ sa, onOpen }) {
   const [name, setName] = useState('');
   const [color, setColor] = useState(PALETTE[0]);
   const [iconEmoji, setIconEmoji] = useState(EMOJI_PRESET[0]);
+  const [templateId, setTemplateId] = useState(TEMPLATES[0].id);
   const [error, setError] = useState(null);
   const [creating, setCreating] = useState(false);
 
@@ -33,7 +35,12 @@ export default function MyTenants({ sa, onOpen }) {
     if (!s || !n) { setError('заполни оба поля'); return; }
     setCreating(true);
     try {
-      const t = await sa.tenants.create({ slug: s, name: n, color, icon_emoji: iconEmoji });
+      const tpl = TEMPLATES.find((x) => x.id === templateId);
+      const t = await sa.tenants.create({
+        slug: s, name: n, color, icon_emoji: iconEmoji,
+        template_id: templateId,
+        config: tpl?.defaultConfig || {},
+      });
       setSlug(''); setName('');
       await reload();
       onOpen(t.slug);
@@ -63,6 +70,29 @@ export default function MyTenants({ sa, onOpen }) {
           <div style={{ opacity: 0.6, fontSize: 13 }}>Так будет выглядеть иконка приложения на телефоне клиента.</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <label style={{ ...lblStyle, marginTop: 0 }}>Тип приложения</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {TEMPLATES.map((tpl) => (
+              <button
+                key={tpl.id}
+                onClick={() => setTemplateId(tpl.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: 10,
+                  borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                  background: templateId === tpl.id ? '#1a2a3a' : '#0a0a14',
+                  border: `1px solid ${templateId === tpl.id ? '#6cf' : '#333'}`,
+                  color: '#fff',
+                }}
+              >
+                <span style={{ fontSize: 22 }}>{tpl.icon}</span>
+                <span style={{ display: 'flex', flexDirection: 'column' }}>
+                  <b>{tpl.name}</b>
+                  <small style={{ opacity: 0.6 }}>{tpl.tagline}</small>
+                </span>
+              </button>
+            ))}
+          </div>
+
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}

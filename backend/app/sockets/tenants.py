@@ -1,17 +1,20 @@
 import base64
+import json
 import re
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from ..db import Tenant, get_session
+from ..db import Tenant, TenantKV, get_session
 from .auth import current_user
 
 router = APIRouter()
 
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$")
-HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+HEX_RE = re.compile(r"^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$")
+ALLOWED_TEMPLATES = {"mood-journal", "barbershop"}
 
 
 class CreateTenant(BaseModel):
@@ -19,12 +22,18 @@ class CreateTenant(BaseModel):
     name: str = Field(..., min_length=1, max_length=80)
     color: str = Field(default="#6cf")
     icon_emoji: str = Field(default="✨", max_length=8)
+    template_id: str = Field(default="mood-journal")
+    config: dict = Field(default_factory=dict)
 
 
 class UpdateTenant(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=80)
     color: str | None = None
     icon_emoji: str | None = Field(default=None, max_length=8)
+
+
+class UpdateConfig(BaseModel):
+    config: dict
 
 
 def _serialize(t: Tenant) -> dict:
@@ -35,13 +44,14 @@ def _serialize(t: Tenant) -> dict:
         "owner_login": t.owner_login,
         "color": t.color,
         "icon_emoji": t.icon_emoji,
+        "template_id": t.template_id,
         "created_at": t.created_at.isoformat() if t.created_at else None,
     }
 
 
 def _normalize_color(c: str) -> str:
     if not HEX_RE.match(c):
-        raise HTTPException(400, "color must be hex like #6cf or #66ccff")
+        raise HTTPException(400, "color must be hex (#6cf or #66ccff)")
     if len(c) == 4:
         c = "#" + "".join(ch * 2 for ch in c[1:])
     return c.lower()
@@ -52,6 +62,8 @@ def create(req: CreateTenant, login: str = Depends(current_user), db: Session = 
     slug = req.slug.lower().strip()
     if not SLUG_RE.match(slug):
         raise HTTPException(400, "slug must match ^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$")
+    if req.template_id not in ALLOWED_TEMPLATES:
+        raise HTTPException(400, f"unknown template_id (allowed: {sorted(ALLOWED_TEMPLATES)})")
     if db.query(Tenant).filter(Tenant.slug == slug).first():
         raise HTTPException(409, "slug already taken")
     t = Tenant(
@@ -60,6 +72,8 @@ def create(req: CreateTenant, login: str = Depends(current_user), db: Session = 
         owner_login=login,
         color=_normalize_color(req.color or "#6cf"),
         icon_emoji=(req.icon_emoji or "✨").strip() or "✨",
+        template_id=req.template_id,
+        config=req.config or {},
     )
     db.add(t)
     db.commit()
@@ -99,8 +113,56 @@ def update(slug: str, req: UpdateTenant, login: str = Depends(current_user), db:
     return _serialize(t)
 
 
+@router.get("/{slug}/config")
+def get_config(slug: str, _: str = Depends(current_user), db: Session = Depends(get_session)):
+    t = db.query(Tenant).filter(Tenant.slug == slug.lower()).first()
+    if not t:
+        raise HTTPException(404, "tenant not found")
+    return {"config": t.config or {}}
+
+
+@router.patch("/{slug}/config")
+def patch_config(slug: str, req: UpdateConfig, login: str = Depends(current_user), db: Session = Depends(get_session)):
+    t = db.query(Tenant).filter(Tenant.slug == slug.lower()).first()
+    if not t:
+        raise HTTPException(404, "tenant not found")
+    if t.owner_login != login:
+        raise HTTPException(403, "only owner can edit config")
+    t.config = req.config or {}
+    db.commit()
+    return {"config": t.config}
+
+
+@router.get("/{slug}/appointments")
+def list_appointments(
+    slug: str,
+    login: str = Depends(current_user),
+    db: Session = Depends(get_session),
+):
+    """Все записи внутри tenant'а — сводный вид только для владельца."""
+    t = db.query(Tenant).filter(Tenant.slug == slug.lower()).first()
+    if not t:
+        raise HTTPException(404, "tenant not found")
+    if t.owner_login != login:
+        raise HTTPException(403, "only owner can view appointments")
+    rows = (
+        db.query(TenantKV.user_login, TenantKV.value)
+        .filter(TenantKV.tenant_id == t.id, TenantKV.key == "appointments")
+        .all()
+    )
+    flat: list[dict[str, Any]] = []
+    for user_login, value in rows:
+        if not isinstance(value, list):
+            continue
+        for appt in value:
+            if not isinstance(appt, dict):
+                continue
+            flat.append({**appt, "user_login": user_login})
+    flat.sort(key=lambda a: (a.get("date", ""), a.get("time", "")))
+    return {"appointments": flat}
+
+
 def _svg_icon(emoji: str, color: str, size: int = 512) -> str:
-    # Простая SVG-иконка: квадрат цвета + эмодзи по центру.
     font = int(size * 0.55)
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 {size} {size}">'
@@ -118,13 +180,10 @@ def _data_uri(svg: str) -> str:
 
 @router.get("/{slug}/manifest.webmanifest")
 def manifest(slug: str, db: Session = Depends(get_session)):
-    # Открытая ручка без auth — PWA fetch'ит манифест без токена.
     t = db.query(Tenant).filter(Tenant.slug == slug.lower()).first()
     if not t:
         raise HTTPException(404, "tenant not found")
     start_url = f"/app/{t.slug}"
-    icon_192 = _data_uri(_svg_icon(t.icon_emoji, t.color, 192))
-    icon_512 = _data_uri(_svg_icon(t.icon_emoji, t.color, 512))
     body = {
         "id": start_url,
         "name": t.name,
@@ -137,12 +196,14 @@ def manifest(slug: str, db: Session = Depends(get_session)):
         "background_color": "#0a0a14",
         "theme_color": t.color,
         "icons": [
-            {"src": icon_192, "sizes": "192x192", "type": "image/svg+xml", "purpose": "any maskable"},
-            {"src": icon_512, "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable"},
+            {"src": _data_uri(_svg_icon(t.icon_emoji, t.color, 192)),
+             "sizes": "192x192", "type": "image/svg+xml", "purpose": "any maskable"},
+            {"src": _data_uri(_svg_icon(t.icon_emoji, t.color, 512)),
+             "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable"},
         ],
     }
     return Response(
-        content=__import__("json").dumps(body, ensure_ascii=False),
+        content=json.dumps(body, ensure_ascii=False),
         media_type="application/manifest+json",
         headers={"Cache-Control": "no-cache"},
     )

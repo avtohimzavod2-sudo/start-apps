@@ -82,8 +82,8 @@ export function createSa({ api, fetchImpl = fetch } = {}) {
       const r = await call('/sa/tenants');
       return r.tenants;
     },
-    async create({ slug, name, color, icon_emoji }) {
-      return call('/sa/tenants', { method: 'POST', body: { slug, name, color, icon_emoji } });
+    async create({ slug, name, color, icon_emoji, template_id, config }) {
+      return call('/sa/tenants', { method: 'POST', body: { slug, name, color, icon_emoji, template_id, config } });
     },
     async update(slug, patch) {
       return call(`/sa/tenants/${encodeURIComponent(slug)}`, { method: 'PATCH', body: patch });
@@ -91,10 +91,35 @@ export function createSa({ api, fetchImpl = fetch } = {}) {
     async get(slug) {
       return call(`/sa/tenants/${encodeURIComponent(slug)}`);
     },
+    async getConfig(slug) {
+      const r = await call(`/sa/tenants/${encodeURIComponent(slug)}/config`);
+      return r.config;
+    },
+    async setConfig(slug, config) {
+      const r = await call(`/sa/tenants/${encodeURIComponent(slug)}/config`, { method: 'PATCH', body: { config } });
+      return r.config;
+    },
+    async appointments(slug) {
+      const r = await call(`/sa/tenants/${encodeURIComponent(slug)}/appointments`);
+      return r.appointments;
+    },
     manifestUrl(slug) {
       return `${api}/sa/tenants/${encodeURIComponent(slug)}/manifest.webmanifest`;
     },
   };
+
+  function makeAi(tenantHeaders) {
+    return {
+      async chat(messages) {
+        const r = await call('/sa/ai/chat', {
+          method: 'POST',
+          body: { messages },
+          extraHeaders: tenantHeaders,
+        });
+        return r.reply;
+      },
+    };
+  }
 
   function withTenant(slug) {
     if (!slug) throw new Error('sa.withTenant: slug required');
@@ -103,6 +128,7 @@ export function createSa({ api, fetchImpl = fetch } = {}) {
       contract: 'v1',
       tenant: slug,
       storage: makeStorage(headers),
+      ai: makeAi(headers),
       auth,
       tenants,
     };

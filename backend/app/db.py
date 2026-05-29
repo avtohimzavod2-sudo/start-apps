@@ -43,6 +43,11 @@ class Tenant(Base):
     # Брендинг — цвет фона иконки PWA и эмодзи на ней.
     color = Column(String, nullable=False, default="#6cf")
     icon_emoji = Column(String, nullable=False, default="✨")
+    # Тип шаблона (barbershop, mood-journal, ...). Один тенант = один тип.
+    template_id = Column(String, nullable=False, default="mood-journal")
+    # Публичная конфигурация бизнеса (услуги, цены, график, адрес...).
+    # Видна всем клиентам tenant'а, редактирует только владелец.
+    config = Column(JSON, nullable=False, default=dict)
 
 
 # Storage attached to (tenant, конкретный пользователь, key).
@@ -69,6 +74,8 @@ def _ensure_columns() -> None:
     stmts = [
         "ALTER TABLE tenants ADD COLUMN color VARCHAR DEFAULT '#6cf' NOT NULL",
         "ALTER TABLE tenants ADD COLUMN icon_emoji VARCHAR DEFAULT '✨' NOT NULL",
+        "ALTER TABLE tenants ADD COLUMN template_id VARCHAR DEFAULT 'mood-journal' NOT NULL",
+        "ALTER TABLE tenants ADD COLUMN config JSON DEFAULT '{}' NOT NULL",
     ]
     for sql in stmts:
         try:

@@ -26,6 +26,9 @@ services:
         generateValue: true
       - key: SA_ENV
         value: prod
+      # Ключ Anthropic — задаётся вручную в Render Dashboard.
+      - key: SA_ANTHROPIC_API_KEY
+        sync: false
 
   # Frontend — статика (vite build), отдаётся CDN'ом Render бесплатно
   - type: web
